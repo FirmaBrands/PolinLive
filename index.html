@@ -1,0 +1,1052 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Firma Studio | Master v15.3 (Clean)</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+    <style>
+        :root {
+            /* --- STUDIO THEME --- */
+            --bg-app: #808080;
+            --bg-panel: #2b2b2b;
+            --bg-input: #1f1f1f;
+            --bg-hover: #3a3a3a;
+            
+            --border: #3f3f3f;
+            --border-active: #555;
+            
+            --accent: #2563eb;
+            --accent-text: #60a5fa;
+            --accent-warn: #ef4444;
+            --accent-rec: #ff3b30;
+            
+            --text-main: #e4e4e7;
+            --text-muted: #a1a1aa;
+            
+            --font-ui: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+        }
+
+        /* --- RESET --- */
+        * { box-sizing: border-box; outline: none; user-select: none; }
+        
+        body {
+            background: var(--bg-app);
+            color: var(--text-main);
+            font-family: var(--font-ui);
+            height: 100vh;
+            overflow: hidden;
+            display: grid;
+            grid-template-columns: 280px 1fr 300px;
+            margin: 0;
+        }
+
+        /* --- UI COMPONENTS --- */
+        h2 {
+            font-size: 11px; font-weight: 700; text-transform: uppercase;
+            letter-spacing: 0.08em; color: var(--text-muted); margin: 0 0 12px 0;
+        }
+        label { font-size: 11px; color: var(--text-muted); display: block; margin-bottom: 6px; }
+
+        aside {
+            background: var(--bg-panel);
+            border-right: 1px solid var(--border);
+            border-left: 1px solid var(--border);
+            display: flex; flex-direction: column; overflow-y: auto; z-index: 10;
+            box-shadow: 0 0 20px rgba(0,0,0,0.2);
+        }
+
+        .panel-section { padding: 20px; border-bottom: 1px solid var(--border); }
+        .panel-header { padding: 16px 20px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between;}
+        .brand { font-weight: 800; font-size: 13px; letter-spacing: 0.05em; color: #fff; }
+        .brand span { color: var(--accent); }
+
+        textarea {
+            width: 100%; background: var(--bg-input); border: 1px solid var(--border);
+            color: white; padding: 12px; font-family: inherit; font-size: 13px;
+            border-radius: 4px; resize: vertical; min-height: 80px;
+        }
+        textarea:focus { border-color: var(--accent); }
+
+        /* --- CONTROLS --- */
+        .control-row { margin-bottom: 18px; }
+        .input-row { display: flex; align-items: center; gap: 10px; }
+        
+        input[type="range"] {
+            -webkit-appearance: none; flex: 1; height: 4px;
+            background: var(--bg-input); border-radius: 2px;
+        }
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none; width: 12px; height: 12px;
+            background: #999; border-radius: 50%; cursor: ew-resize; transition: 0.1s;
+        }
+        input[type="range"]::-webkit-slider-thumb:hover { background: var(--accent); transform: scale(1.2); }
+
+        .num-input {
+            width: 48px;
+            background: var(--bg-input);
+            border: 1px solid var(--border);
+            color: var(--accent-text);
+            font-family: monospace;
+            font-size: 10px;
+            padding: 4px;
+            border-radius: 3px;
+            text-align: right;
+        }
+        .num-input:focus { border-color: var(--accent); color: white; }
+        .num-input::-webkit-outer-spin-button, .num-input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+
+        /* Toggles */
+        .toggle-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; cursor: pointer; }
+        .toggle-switch {
+            width: 32px; height: 18px; background: var(--bg-input); border-radius: 10px; position: relative; transition: 0.2s; border: 1px solid var(--border);
+        }
+        .toggle-switch::after {
+            content:''; position: absolute; left: 2px; top: 2px; width: 12px; height: 12px; background: #666; border-radius: 50%; transition: 0.2s;
+        }
+        input[type="checkbox"] { display: none; }
+        input[type="checkbox"]:checked + .toggle-switch { background: var(--accent); border-color: var(--accent); }
+        input[type="checkbox"]:checked + .toggle-switch::after { transform: translateX(14px); background: white; }
+
+        /* Color Picker */
+        .color-group { margin-bottom: 16px; }
+        .color-row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+        .swatch {
+            width: 24px; height: 24px; border-radius: 4px; cursor: pointer;
+            border: 1px solid rgba(255,255,255,0.1); transition: transform 0.1s;
+        }
+        .swatch:hover { transform: scale(1.1); border-color: white; }
+        .color-input-wrapper {
+            position: relative; width: 24px; height: 24px; border-radius: 4px; overflow: hidden;
+            background: conic-gradient(red, yellow, lime, aqua, blue, magenta, red);
+            border: 1px solid rgba(255,255,255,0.3); cursor: pointer; transition: transform 0.1s;
+        }
+        .color-input-wrapper input { opacity: 0; width: 100%; height: 100%; cursor: pointer; position: absolute; top:0; left:0; }
+
+        .segmented { display: flex; background: var(--bg-input); padding: 2px; border-radius: 4px; margin-bottom: 16px; }
+        .segment-btn {
+            flex: 1; padding: 6px; font-size: 10px; text-align: center; cursor: pointer;
+            border-radius: 3px; color: var(--text-muted); transition: 0.2s;
+        }
+        .segment-btn.active { background: #444; color: white; font-weight: 600; box-shadow: 0 1px 2px rgba(0,0,0,0.5); }
+
+        /* Buttons */
+        button {
+            background: var(--bg-input); border: 1px solid var(--border);
+            color: var(--text-main); padding: 8px 12px; font-size: 11px; font-weight: 600;
+            border-radius: 4px; cursor: pointer; transition: 0.15s; width: 100%;
+        }
+        button:hover { background: var(--bg-hover); border-color: var(--border-active); }
+        button.primary { background: var(--accent); border-color: var(--accent); color: white; }
+        button.warn { color: var(--accent-warn); border-color: rgba(239, 68, 68, 0.3); }
+        
+        button.sequence {
+            background: #2563eb; border-color: #3b82f6; color: white;
+            display: flex; align-items: center; justify-content: center; gap: 8px;
+            transition: all 0.3s ease;
+        }
+        button.sequence:hover {
+             background: #3b82f6;
+        }
+
+        /* Glyph Matrix in Inspector */
+        .glyph-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; margin-bottom: 16px; }
+        .glyph-btn {
+            font-family: monospace; font-size: 10px; padding: 6px; border: 1px solid var(--border);
+            border-radius: 3px; text-align: center; cursor: pointer; color: #888;
+        }
+        .glyph-btn:hover { border-color: #666; color: #fff; }
+        .glyph-btn.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+
+        select {
+            width: 100%; background: var(--bg-input); border: 1px solid var(--border);
+            color: white; padding: 6px; font-size: 11px; border-radius: 4px; margin-bottom: 16px;
+        }
+
+        /* --- STAGE --- */
+        main {
+            position: relative;
+            background: var(--bg-app);
+            display: flex; flex-direction: column; overflow: hidden;
+        }
+        
+        .viewport {
+            flex: 1; display: flex; align-items: center; justify-content: center;
+            overflow: hidden;
+            /* Checkboard for transparency confidence */
+            background-image: 
+                linear-gradient(45deg, #707070 25%, transparent 25%), 
+                linear-gradient(-45deg, #707070 25%, transparent 25%), 
+                linear-gradient(45deg, transparent 75%, #707070 75%), 
+                linear-gradient(-45deg, transparent 75%, #707070 75%);
+            background-size: 20px 20px;
+            background-position: 0 0, 0 10px, 10px -10px, -10px 0px;
+        }
+
+        .transport-bar {
+            height: 50px; background: var(--bg-panel); border-top: 1px solid var(--border);
+            display: flex; align-items: center; justify-content: center; gap: 12px; padding: 0 20px;
+        }
+
+        /* CANVAS WRAPPER */
+        #canvas-wrapper {
+            box-shadow: 0 20px 50px rgba(0,0,0,0.5);
+            transition: transform 0.2s cubic-bezier(0.1, 0.7, 1.0, 0.1);
+        }
+
+        canvas {
+            display: block;
+            background: transparent; /* Essential for export */
+        }
+        
+        /* Interactive overlay for selection detection */
+        canvas.interactive { cursor: text; }
+
+        /* Panels */
+        #panel-global { display: block; }
+        #panel-letter { display: none; }
+        body.has-selection #panel-global { display: none; }
+        body.has-selection #panel-letter { display: block; }
+
+        .inspector-stat { font-size: 32px; font-weight: 300; color: white; margin-bottom: 4px; text-align: center; border: 1px solid var(--border); padding: 20px; border-radius: 6px; background: #000; }
+        .inspector-meta { font-family: monospace; color: var(--text-muted); font-size: 10px; text-align: center; margin-bottom: 20px;}
+
+        /* Recording Dot */
+        .rec-dot { width: 8px; height: 8px; border-radius: 50%; background: currentColor; }
+
+        /* Progress Bar for ZIP */
+        #zipProgress {
+            width: 100%; height: 4px; background: #333; margin-top: 8px; border-radius: 2px; display: none; overflow: hidden;
+        }
+        #zipBar { width: 0%; height: 100%; background: var(--accent); transition: width 0.1s; }
+
+    </style>
+</head>
+<body>
+
+    <aside>
+        <div class="panel-header">
+            <div class="brand">FIRMA<span>STUDIO</span></div>
+        </div>
+
+        <div class="panel-section">
+            <h2>Source</h2>
+            <textarea id="inpText" spellcheck="false" placeholder="Type Hebrew or English...">FIRMA
+2025</textarea>
+            
+            <div style="margin-top:12px;">
+                <label>Text Direction</label>
+                <div class="segmented">
+                    <div class="segment-btn active" onclick="setDir('ltr', this)">LTR</div>
+                    <div class="segment-btn" onclick="setDir('rtl', this)">RTL (Heb)</div>
+                    <div class="segment-btn" onclick="setDir('auto', this)">Auto</div>
+                </div>
+            </div>
+
+            <div style="margin-top:12px;">
+                <label>Text Case</label>
+                <div class="segmented">
+                    <div class="segment-btn active" onclick="setCase('original', this)">Original</div>
+                    <div class="segment-btn" onclick="setCase('upper', this)">ABC</div>
+                    <div class="segment-btn" onclick="setCase('lower', this)">abc</div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="panel-section">
+            <h2>Appearance</h2>
+            <div class="color-group">
+                <label>Standard Colors</label>
+                <div class="color-row">
+                    <div class="color-input-wrapper" title="Custom Color">
+                        <input type="color" id="inpColor" value="#ffffff">
+                    </div>
+                    <div class="swatch" style="background:#000000" onclick="setColor('#000000')" title="Black"></div>
+                    <div class="swatch" style="background:#ffffff" onclick="setColor('#ffffff')" title="White"></div>
+                </div>
+            </div>
+            <div class="color-group">
+                <label>Firma Brand Colors</label>
+                <div class="color-row">
+                    <div class="swatch" style="background:#ff0054" onclick="setColor('#ff0054')"></div>
+                    <div class="swatch" style="background:#ff3924" onclick="setColor('#ff3924')"></div>
+                    <div class="swatch" style="background:#dff946" onclick="setColor('#dff946')"></div>
+                    <div class="swatch" style="background:#00a450" onclick="setColor('#00a450')"></div>
+                    <div class="swatch" style="background:#924cee" onclick="setColor('#924cee')"></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="panel-section">
+            <h2>Typography</h2>
+            
+            <div class="control-row">
+                <label>Font Size (px)</label>
+                <div class="input-row">
+                    <input type="range" id="slSize" min="24" max="800" value="150">
+                    <input type="number" id="numSize" class="num-input" value="150">
+                </div>
+            </div>
+
+            <div class="control-row">
+                <label>Line Height (em)</label>
+                <div class="input-row">
+                    <input type="range" id="slLH" min="0.8" max="2.0" step="0.05" value="1.0">
+                    <input type="number" id="numLH" class="num-input" value="1.0" step="0.05">
+                </div>
+            </div>
+
+            <div class="control-row">
+                <label>Tracking (em)</label>
+                <div class="input-row">
+                    <input type="range" id="slTrack" min="-0.2" max="0.5" step="0.01" value="0">
+                    <input type="number" id="numTrack" class="num-input" value="0" step="0.01">
+                </div>
+            </div>
+        </div>
+    </aside>
+
+    <main id="stage">
+        <div class="viewport" id="viewport">
+            <div id="canvas-wrapper">
+                <canvas id="exportCanvas" width="1920" height="1080"></canvas>
+            </div>
+        </div>
+        
+        <div class="transport-bar">
+            <button id="btnPlay" class="primary" style="width: 120px;">Pause</button>
+            <div style="width:1px; height:20px; background:var(--border); margin:0 8px;"></div>
+            <button id="btnResetAll" class="warn" style="width: auto;">Reset All</button>
+        </div>
+    </main>
+
+    <aside>
+        <div id="panel-global">
+            <div class="panel-header">
+                <h2>Global Settings</h2>
+            </div>
+
+            <div class="panel-section">
+                <h2>Export (Alpha Channel)</h2>
+                
+                <label>Resolution</label>
+                <select id="selResolution">
+                    <option value="3840,2160">4K UHD (3840 x 2160)</option>
+                    <option value="1920,1080" selected>Full HD (1920 x 1080)</option>
+                    <option value="1080,1080">Social Square (1:1)</option>
+                    <option value="1080,1350">Social Portrait (4:5)</option>
+                    <option value="1080,1920">Stories/Reels (9:16)</option>
+                </select>
+
+                <div class="control-row">
+                    <label>Preview Scale (Fit: 0)</label>
+                    <div class="input-row">
+                        <input type="range" id="slScale" min="0" max="100" value="0">
+                        <span id="lblScale" style="font-size:10px; width:30px; color:#666;">FIT</span>
+                    </div>
+                </div>
+
+                <button id="btnSequence" class="sequence" style="height: 48px; border-width: 2px;">
+                    <div class="rec-dot" style="background:white; border-radius:0;"></div>
+                    <span>REC SEQUENCE (ZIP)</span>
+                </button>
+
+                <div id="recStatus" style="font-size:10px; color:var(--text-muted); text-align:center; margin-top:8px; display:none; font-weight: bold;"></div>
+                <div id="zipProgress"><div id="zipBar"></div></div>
+            </div>
+
+            <div class="panel-section">
+                <h2>Physics & Engine</h2>
+                <div class="control-row">
+                    <label>Engine Speed (FPS)</label>
+                    <div class="input-row">
+                        <input type="range" id="slFps" min="1" max="60" value="24">
+                        <input type="number" id="numFps" class="num-input" value="24">
+                    </div>
+                </div>
+                
+                <div class="control-row">
+                    <label>Max Concurrent (Max=ALL)</label>
+                    <div class="input-row">
+                        <input type="range" id="slMax" min="0" max="25" value="3">
+                        <input type="text" id="numMax" class="num-input" value="3" readonly style="width:40px;">
+                    </div>
+                </div>
+
+                <div class="control-row">
+                    <label>Probability (%)</label>
+                    <div class="input-row">
+                        <input type="range" id="slProb" min="0" max="100" value="40">
+                        <input type="number" id="numProb" class="num-input" value="40">
+                    </div>
+                </div>
+
+                <div class="control-row">
+                    <label>Hold Duration (Frames)</label>
+                    <div class="input-row">
+                        <input type="range" id="slDur" min="1" max="60" value="8">
+                        <input type="number" id="numDur" class="num-input" value="8">
+                    </div>
+                </div>
+
+                <button id="btnBake" style="background:#222; border:1px solid #444; color:#fff; height:32px; font-size: 10px; margin-top: 10px;">
+                    ❄️ BAKE ACTIVE GLITCHES
+                </button>
+            </div>
+        </div>
+
+        <div id="panel-letter">
+            <div class="panel-header" style="background:var(--bg-hover);">
+                <h2>Letter Inspector</h2>
+                <button id="btnCloseInsp" style="width:auto; padding:4px 8px; font-size:10px;">CLOSE</button>
+            </div>
+            
+            <div class="panel-section">
+                <div class="inspector-stat" id="inspCharDisplay">A</div>
+                <div class="inspector-meta" id="inspIndex">INDEX #0</div>
+                <button id="btnLock" style="height:40px;">LOCK GLYPH</button>
+            </div>
+            
+            <div class="panel-section">
+                <label>Force Glyph Sets (Multi-Select)</label>
+                <div class="glyph-grid" id="glyphGrid"></div>
+            </div>
+
+            <div class="panel-section">
+                <div class="control-row">
+                    <label>Left Spacing (em)</label>
+                    <div class="input-row">
+                        <input type="range" id="slML" min="-1" max="1" step="0.05" value="0">
+                        <input type="number" id="numML" class="num-input" value="0" step="0.05">
+                    </div>
+                </div>
+                <div class="control-row">
+                    <label>Right Spacing (em)</label>
+                    <div class="input-row">
+                        <input type="range" id="slMR" min="-1" max="1" step="0.05" value="0">
+                        <input type="number" id="numMR" class="num-input" value="0" step="0.05">
+                    </div>
+                </div>
+            </div>
+
+            <div class="panel-section">
+                <label>Manual Override</label>
+                <input type="text" id="inspOverride" style="text-align:center; font-weight:bold; font-size:14px; letter-spacing:2px;" placeholder="Type char..." maxlength="1">
+            </div>
+        </div>
+    </aside>
+
+<script>
+/**
+ * Firma Master Glitcher v15.3 - Clean Version
+ * Features: High-Res Export, PNG Sequence (JSZip)
+ */
+
+const FONT_NAME = 'Firma';
+// Ensure this path matches your local file structure
+const FONT_URL = 'Firma.otf'; 
+
+const app = {
+    rawText: "FIRMA\n2025",
+    caseMode: 'original',
+    direction: 'ltr',
+    textColor: '#ffffff',
+    fontSize: 150,
+    tracking: 0,
+    lineHeight: 1.0, 
+    
+    // Canvas Settings
+    width: 1920,
+    height: 1080,
+    previewScale: 0, // 0 = AutoFit
+    
+    // Physics
+    fps: 24,
+    maxConcurrent: 3, 
+    probability: 0.4,
+    minDuration: 8,
+    activeFeatures: ["ss01", "ss02", "ss03", "ss04", "ss05", "ss06"],
+
+    isPlaying: true,
+    lastTime: 0,
+    nodes: [],
+    selectionIndex: -1,
+    
+    // Recording (Sequence)
+    isSequencing: false,
+    sequenceFrames: [],
+    sequenceLimit: 300, // Safety limit
+};
+
+const dom = {
+    input: document.getElementById('inpText'),
+    canvas: document.getElementById('exportCanvas'),
+    canvasWrapper: document.getElementById('canvas-wrapper'),
+    viewport: document.getElementById('viewport'),
+    // IMPORTANT: Alpha must be true for transparent export
+    ctx: document.getElementById('exportCanvas').getContext('2d', { alpha: true }),
+    
+    inpColor: document.getElementById('inpColor'),
+    
+    panelGlobal: document.getElementById('panel-global'),
+    panelLetter: document.getElementById('panel-letter'),
+    
+    inspCharDisplay: document.getElementById('inspCharDisplay'),
+    inspOverride: document.getElementById('inspOverride'),
+    inspIndex: document.getElementById('inspIndex'),
+    btnLock: document.getElementById('btnLock'),
+    
+    // Spacing
+    slML: document.getElementById('slML'), numML: document.getElementById('numML'),
+    slMR: document.getElementById('slMR'), numMR: document.getElementById('numMR'),
+    
+    glyphGrid: document.getElementById('glyphGrid'),
+    selResolution: document.getElementById('selResolution'),
+    slScale: document.getElementById('slScale'),
+    lblScale: document.getElementById('lblScale'),
+    
+    btnSequence: document.getElementById('btnSequence'),
+    recStatus: document.getElementById('recStatus'),
+    zipProgress: document.getElementById('zipProgress'),
+    zipBar: document.getElementById('zipBar')
+};
+
+async function init() {
+    try {
+        const font = new FontFace(FONT_NAME, `url(${FONT_URL})`);
+        await font.load();
+        document.fonts.add(font);
+    } catch(e) { console.warn("Font local file not found."); }
+
+    setupControls();
+    syncText();
+    handleResize(); // Initial Layout
+    window.addEventListener('resize', handleResize);
+    loop(0);
+}
+
+function getProcessedText() {
+    if(app.caseMode === 'upper') return app.rawText.toUpperCase();
+    if(app.caseMode === 'lower') return app.rawText.toLowerCase();
+    return app.rawText;
+}
+
+function syncText() {
+    const text = getProcessedText();
+    const chars = Array.from(text); 
+
+    app.nodes = chars.map((char, i) => {
+        const existing = app.nodes[i];
+        if(existing && existing.originalChar === char) return existing;
+        
+        return {
+            originalChar: char,
+            override: null,
+            locked: false,
+            activeTag: null, 
+            forcedTags: [], 
+            marginLeft: 0, 
+            marginRight: 0, 
+            timer: Math.floor(Math.random() * 10),
+            // Layout metrics (calculated each render)
+            x: 0, y: 0, width: 0
+        };
+    });
+
+    if(app.selectionIndex >= app.nodes.length) deselect();
+}
+
+// --- RENDER ENGINE (CANVAS) ---
+
+function handleResize() {
+    const vw = dom.viewport.clientWidth;
+    const vh = dom.viewport.clientHeight;
+    
+    let scale = app.previewScale / 100;
+    
+    // Auto Fit logic
+    if (app.previewScale === 0) {
+        const pad = 40;
+        const scaleW = (vw - pad) / app.width;
+        const scaleH = (vh - pad) / app.height;
+        scale = Math.min(scaleW, scaleH);
+        dom.lblScale.textContent = "FIT";
+    } else {
+        dom.lblScale.textContent = Math.round(scale * 100) + "%";
+    }
+
+    dom.canvasWrapper.style.transform = `scale(${scale})`;
+}
+
+function render() {
+    const ctx = dom.ctx;
+    const w = app.width;
+    const h = app.height;
+    
+    // 1. Clear with Transparency
+    ctx.clearRect(0, 0, w, h);
+
+    // 2. Setup Font Base
+    ctx.textRendering = "optimizeLegibility";
+    ctx.textAlign = "left";
+    ctx.textBaseline = "alphabetic";
+
+    // 3. Layout Calculation (Multi-line)
+    const lines = [];
+    let currentLine = [];
+    app.nodes.forEach(node => {
+        if (node.originalChar === '\n') {
+            lines.push(currentLine);
+            currentLine = [];
+        } else {
+            currentLine.push(node);
+        }
+    });
+    lines.push(currentLine);
+
+    // Calculate Vertical Center
+    const lineHeightPx = app.fontSize * app.lineHeight;
+    const totalBlockHeight = lines.length * lineHeightPx;
+    let cursorY = (h / 2) - (totalBlockHeight / 2) + (app.fontSize * 0.75);
+
+    // 4. Draw Lines
+    lines.forEach(line => {
+        if (line.length === 0) {
+            cursorY += lineHeightPx;
+            return;
+        }
+
+        // --- RTL LOGIC ---
+        let isRtl = app.direction === 'rtl';
+        if (app.direction === 'auto') {
+            const textContent = line.map(n => n.originalChar).join('');
+            const rtlChar = /[\u0590-\u08FF]/.test(textContent); // Hebrew/Arabic range
+            if (rtlChar) isRtl = true;
+        }
+
+        const visualLine = isRtl ? [...line].reverse() : line;
+
+        // A. Measure total width
+        let totalLineWidth = 0;
+        ctx.font = `${app.fontSize}px ${FONT_NAME}`;
+        
+        visualLine.forEach(node => {
+            const charToDraw = node.override || node.originalChar;
+            const metrics = ctx.measureText(charToDraw);
+            node.width = metrics.width;
+            
+            const trackingPx = app.fontSize * app.tracking;
+            const spacing = (node.marginLeft * app.fontSize) + (node.marginRight * app.fontSize);
+            
+            totalLineWidth += node.width + trackingPx + spacing;
+        });
+        
+        if(visualLine.length > 0) totalLineWidth -= (app.fontSize * app.tracking);
+
+        // B. Determine Start X (Center Align)
+        let cursorX = (w / 2) - (totalLineWidth / 2);
+
+        // C. Draw Characters
+        visualLine.forEach((node) => {
+            const charToDraw = node.override || node.originalChar;
+            
+            let tags = [];
+            if(node.forcedTags.length > 0) tags = node.forcedTags;
+            else if(node.activeTag) tags = [node.activeTag];
+
+            ctx.save();
+            
+            if(tags.length > 0) {
+                 const featureString = tags.map(t => `"${t}" 1`).join(', ');
+                 ctx.canvas.style.fontFeatureSettings = featureString;
+            } else {
+                 ctx.canvas.style.fontFeatureSettings = "normal";
+            }
+
+            ctx.font = `${app.fontSize}px ${FONT_NAME}`;
+            ctx.fillStyle = app.textColor;
+
+            // Manual Spacing
+            cursorX += (node.marginLeft * app.fontSize);
+            
+            // Interaction Hit Area
+            node.hitX = cursorX;
+            node.hitY = cursorY - app.fontSize;
+            node.hitW = node.width;
+            node.hitH = app.fontSize;
+
+            // Draw
+            ctx.fillText(charToDraw, cursorX, cursorY);
+            
+            // Selection Highlight
+            if (app.selectionIndex === app.nodes.indexOf(node)) {
+                ctx.strokeStyle = getComputedStyle(document.body).getPropertyValue('--accent');
+                ctx.lineWidth = 2;
+                ctx.strokeRect(cursorX, cursorY - app.fontSize, node.width, app.fontSize);
+            }
+            
+            // Move Cursor
+            const trackingPx = app.fontSize * app.tracking;
+            cursorX += node.width + trackingPx + (node.marginRight * app.fontSize);
+            
+            ctx.restore();
+        });
+
+        cursorY += lineHeightPx;
+    });
+}
+
+// --- LOOP & PHYSICS ---
+
+function loop(timestamp) {
+    requestAnimationFrame(loop);
+    
+    const interval = 1000 / app.fps;
+    const delta = timestamp - app.lastTime;
+    
+    if(delta > interval) {
+        app.lastTime = timestamp - (delta % interval);
+        if(app.isPlaying) {
+            step();
+        }
+        render(); 
+
+        // --- SEQUENCE CAPTURE ---
+        if(app.isSequencing) {
+            captureFrame();
+        }
+    }
+}
+
+function step() {
+    const activeCount = app.nodes.filter(n => n.forcedTags.length === 0 && n.activeTag !== null && !n.locked).length;
+    const isUnlimited = app.maxConcurrent >= 25;
+
+    app.nodes.forEach(node => {
+        if(node.locked || node.originalChar === '\n' || !node.originalChar.trim()) return;
+        if(node.forcedTags.length > 0) return; 
+
+        node.timer++;
+        
+        if(node.timer > app.minDuration) {
+            const isGlitched = node.activeTag !== null;
+            const roll = Math.random();
+
+            if(isGlitched) {
+                if(roll > 0.3) {
+                    node.activeTag = null;
+                    node.timer = 0;
+                } else {
+                    if(app.activeFeatures.length) {
+                        node.activeTag = app.activeFeatures[Math.floor(Math.random() * app.activeFeatures.length)];
+                        node.timer = 0;
+                    }
+                }
+            } else {
+                const canIgnite = isUnlimited || activeCount < app.maxConcurrent;
+                if(canIgnite && roll < app.probability && app.activeFeatures.length) {
+                    node.activeTag = app.activeFeatures[Math.floor(Math.random() * app.activeFeatures.length)];
+                    node.timer = 0;
+                }
+            }
+        }
+    });
+}
+
+// --- INTERACTION ---
+
+dom.canvas.addEventListener('mousedown', (e) => {
+    // Coordinate conversion
+    const rect = dom.canvas.getBoundingClientRect();
+    const scaleX = app.width / rect.width;
+    const scaleY = app.height / rect.height;
+    
+    const mouseX = (e.clientX - rect.left) * scaleX;
+    const mouseY = (e.clientY - rect.top) * scaleY;
+    
+    let hit = -1;
+    app.nodes.forEach((node, i) => {
+        if(mouseX >= node.hitX && mouseX <= node.hitX + node.hitW &&
+           mouseY >= node.hitY && mouseY <= node.hitY + node.hitH) {
+            hit = i;
+        }
+    });
+    
+    if(hit > -1) selectNode(hit);
+    else deselect();
+});
+
+// --- RECORDING: SEQUENCE (PNG ZIP) ---
+
+function toggleSequence() {
+    if(app.isSequencing) {
+        stopSequence();
+    } else {
+        startSequence();
+    }
+}
+
+function startSequence() {
+    app.sequenceFrames = [];
+    app.isSequencing = true;
+    
+    dom.btnSequence.innerHTML = '<div class="rec-dot" style="background:white; border-radius:0;"></div><span>STOP CAPTURE</span>';
+    dom.btnSequence.style.backgroundColor = '#d32f2f'; // Red color indicating active capture
+    
+    dom.recStatus.style.display = "block";
+    dom.recStatus.style.color = "var(--accent)";
+    dom.recStatus.textContent = "Capturing Frames (PNG)...";
+}
+
+function captureFrame() {
+    // Capture high quality Blob
+    dom.canvas.toBlob((blob) => {
+        if(!app.isSequencing) return; // Stopped in middle of async
+        app.sequenceFrames.push(blob);
+        
+        dom.recStatus.textContent = `Captured Frames: ${app.sequenceFrames.length}`;
+        
+        // Safety Limit
+        if(app.sequenceFrames.length >= app.sequenceLimit) {
+            stopSequence();
+            alert("Hit safety limit (300 frames). Saving now...");
+        }
+    }, 'image/png');
+}
+
+function stopSequence() {
+    app.isSequencing = false;
+    dom.recStatus.textContent = "Zipping frames... Please wait.";
+    dom.zipProgress.style.display = "block";
+    
+    const zip = new JSZip();
+    const folder = zip.folder("sequence");
+    
+    app.sequenceFrames.forEach((blob, i) => {
+        const filename = `frame_${String(i).padStart(4, '0')}.png`;
+        folder.file(filename, blob);
+    });
+
+    zip.generateAsync({type:"blob"}, (metadata) => {
+        dom.zipBar.style.width = metadata.percent + "%";
+    }).then((content) => {
+        const dateStr = new Date().toISOString().slice(0,19).replace(/[:T]/g,"-");
+        saveAs(content, `Firma_Sequence_${dateStr}.zip`);
+        
+        // Reset UI
+        dom.btnSequence.innerHTML = '<div class="rec-dot" style="background:white; border-radius:0;"></div><span>REC SEQUENCE (ZIP)</span>';
+        dom.btnSequence.style.backgroundColor = '';
+        dom.recStatus.style.display = "none";
+        dom.zipProgress.style.display = "none";
+        dom.zipBar.style.width = "0%";
+    });
+}
+
+
+// --- UI HELPERS ---
+
+function bindSliderInput(key, sliderId, inputId, scale=1) {
+    const slider = document.getElementById(sliderId);
+    const input = document.getElementById(inputId);
+
+    slider.oninput = (e) => {
+        let val = parseFloat(e.target.value);
+        if(key === 'maxConcurrent' && val >= 25) {
+            app[key] = 9999;
+            input.value = "ALL";
+        } else {
+            app[key] = val * scale;
+            if(input.type === 'number') input.value = val * scale;
+            else input.value = val;
+        }
+        render();
+    };
+
+    if(input.type === 'number') {
+        input.onchange = (e) => {
+            let val = parseFloat(e.target.value);
+            if(key === 'maxConcurrent') {
+                app[key] = val;
+                slider.value = Math.min(val, 24); 
+            } else {
+                app[key] = val; 
+                slider.value = val / scale;
+            }
+            render();
+        };
+    }
+}
+
+function buildGlyphGrid(node) {
+    dom.glyphGrid.innerHTML = '';
+    
+    const clearBtn = document.createElement('div');
+    clearBtn.className = 'glyph-btn';
+    clearBtn.textContent = "CLEAR";
+    clearBtn.style.gridColumn = "1 / -1";
+    clearBtn.onclick = () => {
+        node.forcedTags = [];
+        buildGlyphGrid(node);
+    };
+    dom.glyphGrid.appendChild(clearBtn);
+
+    app.activeFeatures.forEach(tag => {
+        const btn = document.createElement('div');
+        btn.className = 'glyph-btn';
+        btn.textContent = tag.toUpperCase();
+        if(node.forcedTags.includes(tag)) btn.classList.add('active');
+        btn.onclick = () => {
+            if(node.forcedTags.includes(tag)) node.forcedTags = node.forcedTags.filter(t => t !== tag);
+            else node.forcedTags.push(tag);
+            buildGlyphGrid(node); 
+        };
+        dom.glyphGrid.appendChild(btn);
+    });
+}
+
+function selectNode(index) {
+    app.selectionIndex = index;
+    const node = app.nodes[index];
+    document.body.classList.add('has-selection');
+    
+    dom.inspCharDisplay.textContent = node.originalChar;
+    dom.inspIndex.textContent = `INDEX #${index}`;
+    dom.inspOverride.value = node.override || '';
+    
+    dom.slML.value = node.marginLeft; dom.numML.value = node.marginLeft;
+    dom.slMR.value = node.marginRight; dom.numMR.value = node.marginRight;
+
+    buildGlyphGrid(node);
+    updateLockBtn(node.locked);
+    render();
+}
+
+function deselect() {
+    app.selectionIndex = -1;
+    document.body.classList.remove('has-selection');
+    render();
+}
+
+function updateLockBtn(locked) {
+    dom.btnLock.textContent = locked ? "UNLOCK GLYPH" : "LOCK GLYPH";
+    dom.btnLock.style.borderColor = locked ? "var(--accent-warn)" : "var(--border)";
+    dom.btnLock.style.color = locked ? "var(--accent-warn)" : "white";
+}
+
+function setCase(mode, btn) {
+    app.caseMode = mode;
+    updateSegmentedUI(btn);
+    syncText();
+}
+
+function setDir(dir, btn) {
+    app.direction = dir;
+    updateSegmentedUI(btn);
+    render();
+}
+
+function setColor(hex) {
+    app.textColor = hex;
+    dom.inpColor.value = hex;
+    render();
+}
+
+function updateSegmentedUI(clickedBtn) {
+    const parent = clickedBtn.parentElement;
+    Array.from(parent.children).forEach(c => c.classList.remove('active'));
+    clickedBtn.classList.add('active');
+}
+
+function setupControls() {
+    dom.input.oninput = (e) => { app.rawText = e.target.value; syncText(); };
+    dom.inpColor.oninput = (e) => setColor(e.target.value);
+
+    bindSliderInput('fontSize', 'slSize', 'numSize');
+    bindSliderInput('lineHeight', 'slLH', 'numLH');
+    bindSliderInput('tracking', 'slTrack', 'numTrack');
+    bindSliderInput('fps', 'slFps', 'numFps');
+    bindSliderInput('probability', 'slProb', 'numProb', 0.01);
+    bindSliderInput('minDuration', 'slDur', 'numDur');
+    bindSliderInput('maxConcurrent', 'slMax', 'numMax');
+
+    // Spacing Sliders logic (Node specific)
+    const setupSpacing = (slId, numId, prop) => {
+        const sl = document.getElementById(slId);
+        const num = document.getElementById(numId);
+        const handler = (val) => {
+            if(app.selectionIndex > -1) {
+                app.nodes[app.selectionIndex][prop] = val;
+            }
+        };
+        sl.oninput = e => { 
+            const v = parseFloat(e.target.value); 
+            num.value = v; 
+            handler(v); 
+        };
+        num.onchange = e => { 
+            const v = parseFloat(e.target.value); 
+            sl.value = v; 
+            handler(v); 
+        };
+    };
+    setupSpacing('slML', 'numML', 'marginLeft');
+    setupSpacing('slMR', 'numMR', 'marginRight');
+
+    document.getElementById('btnPlay').onclick = function() {
+        app.isPlaying = !app.isPlaying;
+        this.textContent = app.isPlaying ? "Pause" : "Resume";
+        this.classList.toggle('primary', app.isPlaying);
+        if(app.isPlaying) loop(performance.now());
+    };
+
+    document.getElementById('btnResetAll').onclick = () => {
+        app.nodes.forEach(n => { 
+            n.locked = false; n.override = null; n.activeTag = null; 
+            n.forcedTags = []; n.marginLeft = 0; n.marginRight = 0;
+        });
+        deselect();
+    };
+
+    document.getElementById('btnBake').onclick = () => {
+        app.nodes.forEach(n => { if(n.activeTag) n.locked = true; });
+    };
+    
+    dom.selResolution.onchange = (e) => {
+        const parts = e.target.value.split(',');
+        app.width = parseInt(parts[0]);
+        app.height = parseInt(parts[1]);
+        dom.canvas.width = app.width;
+        dom.canvas.height = app.height;
+        handleResize();
+    };
+    
+    dom.slScale.oninput = (e) => {
+        app.previewScale = parseInt(e.target.value);
+        handleResize();
+    };
+
+    dom.btnSequence.onclick = toggleSequence;
+
+    dom.inspOverride.oninput = (e) => {
+        if(app.selectionIndex > -1) {
+            app.nodes[app.selectionIndex].override = e.target.value;
+        }
+    };
+    
+    dom.btnLock.onclick = () => {
+        if(app.selectionIndex > -1) {
+            const n = app.nodes[app.selectionIndex];
+            n.locked = !n.locked;
+            updateLockBtn(n.locked);
+        }
+    };
+    
+    document.getElementById('btnCloseInsp').onclick = deselect;
+}
+
+init();
+
+</script>
+</body>
+</html>
