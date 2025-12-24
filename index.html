@@ -695,7 +695,7 @@
                                 <span>(Instant)</span>
                             </button>
                             <button class="seg-btn" id="btnFmtMov" onclick="setExportFormat('mov')">
-                                MOV
+                                PRORES MOV
                                 <span>(Alpha Video)</span>
                             </button>
                         </div>
@@ -838,7 +838,7 @@ const Tutorial = {
         { 
             target: '#t-step-color', 
             title: '3. Appearance', 
-            body: 'Customize your palette here. <br><b>Note:</b> "Transparent" background is available for both PNG Sequence and MOV.' 
+            body: 'Customize your palette here. <br><b>Note:</b> "Transparent" background is available for both PNG Sequence and ProRes MOV.' 
         },
         { 
             target: '#t-step-typo', 
@@ -863,7 +863,7 @@ const Tutorial = {
         { 
             target: '#t-step-export', 
             title: '7. Export', 
-            body: 'Select <b>PNG Sequence</b> (Instant) or <b>MOV</b> (Requires Processing). <br>Both formats support Alpha Channel for After Effects.',
+            body: 'Select <b>PNG Sequence</b> (Instant) or <b>ProRes MOV</b> (Requires Processing). <br>Both formats support Alpha Channel for After Effects.',
             onEnter: () => { deselect(); }
         },
         { 
@@ -1030,48 +1030,66 @@ async function init() {
     setTimeout(() => Tutorial.start(), 1000);
 }
 
-// --- FFMPEG v0.11 / PRORES LOGIC ---
-
+// --- FFMPEG / PRORES LOGIC (GITHUB PAGES COMPATIBLE) ---
 async function initFFmpeg() {
-    if (app.ffmpeg) return;
+    if(app.ffmpeg) return;
     
     const { createFFmpeg } = FFmpeg;
     
-    // STRICT FIX: Force use of the Single-Threaded Core for GitHub Pages
+    // Explicitly using the SINGLE THREADED core.
+    // This is required for GitHub Pages which does not support SharedArrayBuffer headers.
     app.ffmpeg = createFFmpeg({ 
         log: true, 
-        corePath: 'https://unpkg.com/@ffmpeg/core-st@0.11.6/dist/ffmpeg-core.js' 
+        corePath: 'https://unpkg.com/@ffmpeg/core-st@0.11.1/dist/ffmpeg-core.js',
     });
     
-    await app.ffmpeg.load();
-    app.ffmpegLoaded = true;
-    console.log("FFmpeg (Single Threaded) Ready");
+    // UI Feedback for loading
+    dom.recStatus.textContent = "LOADING ENGINE...";
+    try {
+        await app.ffmpeg.load();
+        app.ffmpegLoaded = true;
+        console.log("FFmpeg Ready (Single Threaded)");
+        dom.recStatus.textContent = "";
+    } catch(e) {
+        console.error(e);
+        dom.recStatus.textContent = "ENGINE ERROR";
+        alert("Failed to load video engine. Please use Chrome/Edge/Firefox on Desktop.");
+    }
 }
 
 async function renderProRes() {
     if (!app.ffmpegLoaded) await initFFmpeg();
+    if (!app.ffmpegLoaded) return; // Exit if failed to load
     
-    dom.recStatus.textContent = "ENCODING VIDEO... (Wait)";
+    dom.recStatus.textContent = "ENCODING VIDEO... (Please Wait)";
     dom.zipProgressWrapper.style.display = "block";
     dom.zipBar.style.width = "10%";
 
     const fps = app.fps;
     
-    // 1. Write frames to virtual file system
-    for (let i = 0; i < app.sequenceFrames.length; i++) {
-        const blob = app.sequenceFrames[i];
-        const name = `frame_${String(i).padStart(4, '0')}.png`;
-        const data = await fetch(URL.createObjectURL(blob)).then(r => r.arrayBuffer());
-        
-        // v0.11 API: FS('writeFile')
-        app.ffmpeg.FS('writeFile', name, new Uint8Array(data));
-        
-        const pct = 10 + ((i / app.sequenceFrames.length) * 40);
-        dom.zipBar.style.width = `${pct}%`;
+    // Write captured PNGs to FFmpeg filesystem
+    try {
+        for (let i = 0; i < app.sequenceFrames.length; i++) {
+            const blob = app.sequenceFrames[i];
+            const name = `frame_${String(i).padStart(4, '0')}.png`;
+            const data = await new Response(blob).arrayBuffer(); // Clean way to get buffer
+            app.ffmpeg.FS('writeFile', name, new Uint8Array(data));
+            
+            // Update UI
+            const pct = 10 + ((i / app.sequenceFrames.length) * 30);
+            dom.zipBar.style.width = `${pct}%`;
+        }
+    } catch(e) {
+        console.error("Write error:", e);
+        dom.recStatus.textContent = "WRITE ERROR";
+        return;
     }
 
-    // 2. Run FFmpeg Command
-    // v0.11 API: run(...)
+    // Run FFmpeg (ProRes 4444 with Alpha)
+    // Note: Single threaded is slower, so we inform user
+    dom.recStatus.textContent = "RENDERING PRORES... (May take a moment)";
+    dom.zipBar.style.width = "40%";
+
     try {
         await app.ffmpeg.run(
             '-framerate', String(fps),
@@ -1081,29 +1099,30 @@ async function renderProRes() {
             '-pix_fmt', 'yuva444p10le', 
             '-vendor', 'apl0', 
             '-bits_per_mb', '8000',
+            '-y', // Overwrite
             'output.mov'
         );
     } catch(err) {
-        alert("Encoding Failed. See console.");
+        alert("Encoding Failed. Check Console.");
         console.error(err);
-        dom.recStatus.textContent = "ERROR";
+        dom.recStatus.textContent = "ENCODE ERROR";
         return;
     }
 
     dom.zipBar.style.width = "90%";
+    dom.recStatus.textContent = "SAVING...";
 
-    // 3. Read Output
     const data = app.ffmpeg.FS('readFile', 'output.mov');
     const videoBlob = new Blob([data.buffer], { type: 'video/quicktime' });
     saveAs(videoBlob, `Firma_ProRes_${Date.now()}.mov`);
 
-    // 4. Cleanup
+    // Cleanup to free memory (Critical for WASM)
     try {
         app.ffmpeg.FS('unlink', 'output.mov');
         for (let i = 0; i < app.sequenceFrames.length; i++) {
             app.ffmpeg.FS('unlink', `frame_${String(i).padStart(4, '0')}.png`);
         }
-    } catch(e) { console.log(e); }
+    } catch(e){}
 
     dom.recStatus.textContent = "DONE";
     setTimeout(() => { 
@@ -1372,7 +1391,7 @@ function updateRecordButton() {
     const btn = dom.btnRecord; 
     const isZip = app.exportFormat === 'zip';
     if(!app.isRecording) {
-        btn.innerHTML = `<i data-lucide="${isZip ? 'images' : 'film'}" class="icon-sm"></i> ${isZip ? 'REC SEQUENCE' : 'REC MOV'}`;
+        btn.innerHTML = `<i data-lucide="${isZip ? 'images' : 'film'}" class="icon-sm"></i> ${isZip ? 'REC SEQUENCE' : 'REC PRORES'}`;
         btn.classList.remove('recording'); dom.recStatus.textContent = "";
     } else { btn.innerHTML = `<i data-lucide="square" class="icon-sm"></i> STOP RECORDING`; btn.classList.add('recording'); }
     lucide.createIcons();
