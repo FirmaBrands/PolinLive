@@ -8,7 +8,8 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
-    <script src="https://unpkg.com/@ffmpeg/ffmpeg@0.11.6/dist/ffmpeg.min.js"></script>
+    
+    <script src="https://unpkg.com/@ffmpeg/ffmpeg@0.11.0/dist/ffmpeg.min.js"></script>
     
     <style>
         :root {
@@ -1033,7 +1034,8 @@ async function init() {
 async function initFFmpeg() {
     if(app.ffmpeg) return;
     const { createFFmpeg } = FFmpeg;
-    // Core Path (Single Threaded) for GitHub Pages compatibility
+    // USE VERSION 0.11.0 to match the Core-ST 0.11.1
+    // This mismatch (0.11.6 vs 0.11.1) caused the proxy_main crash
     app.ffmpeg = createFFmpeg({ 
         log: true, 
         corePath: 'https://unpkg.com/@ffmpeg/core-st@0.11.1/dist/ffmpeg-core.js' 
