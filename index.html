@@ -9,8 +9,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
     
-    <script src="https://unpkg.com/@ffmpeg/ffmpeg@0.12.10/dist/umd/ffmpeg.js"></script>
-    <script src="https://unpkg.com/@ffmpeg/util@0.12.1/dist/umd/index.js"></script>
+    <script src="https://unpkg.com/@ffmpeg/ffmpeg@0.11.6/dist/ffmpeg.min.js"></script>
     
     <style>
         :root {
@@ -1031,31 +1030,26 @@ async function init() {
     setTimeout(() => Tutorial.start(), 1000);
 }
 
-// --- FFMPEG v0.12 / PRORES LOGIC ---
+// --- FFMPEG v0.11 / PRORES LOGIC ---
 
 async function initFFmpeg() {
     if (app.ffmpeg) return;
     
-    // In v0.12 UMD builds, the global is 'FFmpegWASM'
-    const { FFmpeg } = FFmpegWASM;
-    app.ffmpeg = new FFmpeg();
+    const { createFFmpeg } = FFmpeg;
     
-    // Optional: Log messages to console
-    app.ffmpeg.on('log', ({ message }) => console.log(message));
-
-    // Load the Core. v0.12 default core is Single-Threaded (Perfect for GitHub Pages)
-    await app.ffmpeg.load({
-        coreURL: 'https://unpkg.com/@ffmpeg/core@0.12.6/dist/umd/ffmpeg-core.js',
+    // STRICT FIX: Force use of the Single-Threaded Core for GitHub Pages
+    app.ffmpeg = createFFmpeg({ 
+        log: true, 
+        corePath: 'https://unpkg.com/@ffmpeg/core-st@0.11.6/dist/ffmpeg-core.js' 
     });
-
+    
+    await app.ffmpeg.load();
     app.ffmpegLoaded = true;
-    console.log("FFmpeg v0.12 Ready");
+    console.log("FFmpeg (Single Threaded) Ready");
 }
 
 async function renderProRes() {
     if (!app.ffmpegLoaded) await initFFmpeg();
-    
-    const { fetchFile } = FFmpegUtil; // Utility to handle Blobs
     
     dom.recStatus.textContent = "ENCODING VIDEO... (Wait)";
     dom.zipProgressWrapper.style.display = "block";
@@ -1067,18 +1061,19 @@ async function renderProRes() {
     for (let i = 0; i < app.sequenceFrames.length; i++) {
         const blob = app.sequenceFrames[i];
         const name = `frame_${String(i).padStart(4, '0')}.png`;
+        const data = await fetch(URL.createObjectURL(blob)).then(r => r.arrayBuffer());
         
-        // v0.12 Syntax: writeFile(name, data)
-        await app.ffmpeg.writeFile(name, await fetchFile(blob));
+        // v0.11 API: FS('writeFile')
+        app.ffmpeg.FS('writeFile', name, new Uint8Array(data));
         
         const pct = 10 + ((i / app.sequenceFrames.length) * 40);
         dom.zipBar.style.width = `${pct}%`;
     }
 
     // 2. Run FFmpeg Command
-    // v0.12 Syntax: exec(['arg1', 'arg2']) - Array of strings, no flags like '-c:v' joined
+    // v0.11 API: run(...)
     try {
-        await app.ffmpeg.exec([
+        await app.ffmpeg.run(
             '-framerate', String(fps),
             '-pattern_type', 'glob', '-i', '*.png',
             '-c:v', 'prores_ks', 
@@ -1087,7 +1082,7 @@ async function renderProRes() {
             '-vendor', 'apl0', 
             '-bits_per_mb', '8000',
             'output.mov'
-        ]);
+        );
     } catch(err) {
         alert("Encoding Failed. See console.");
         console.error(err);
@@ -1098,15 +1093,15 @@ async function renderProRes() {
     dom.zipBar.style.width = "90%";
 
     // 3. Read Output
-    const data = await app.ffmpeg.readFile('output.mov');
+    const data = app.ffmpeg.FS('readFile', 'output.mov');
     const videoBlob = new Blob([data.buffer], { type: 'video/quicktime' });
     saveAs(videoBlob, `Firma_ProRes_${Date.now()}.mov`);
 
     // 4. Cleanup
     try {
-        await app.ffmpeg.deleteFile('output.mov');
+        app.ffmpeg.FS('unlink', 'output.mov');
         for (let i = 0; i < app.sequenceFrames.length; i++) {
-            await app.ffmpeg.deleteFile(`frame_${String(i).padStart(4, '0')}.png`);
+            app.ffmpeg.FS('unlink', `frame_${String(i).padStart(4, '0')}.png`);
         }
     } catch(e) { console.log(e); }
 
