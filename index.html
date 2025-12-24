@@ -8,6 +8,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://unpkg.com/@ffmpeg/ffmpeg@0.11.6/dist/ffmpeg.min.js"></script>
     
     <style>
         :root {
@@ -569,7 +570,7 @@
                 <div id="bgSwatchTrans" class="swatch-wide" onclick="setBgMode('transparent')">
                     <span class="swatch-wide-label">Transparent</span>
                     <div class="mp4-warning-inline">
-                        Not supported on MP4
+                        Supports Alpha
                     </div>
                 </div>
                 
@@ -690,17 +691,17 @@
                         <div class="seg-control">
                             <button class="seg-btn active" id="btnFmtZip" onclick="setExportFormat('zip')">
                                 PNG SEQUENCE
-                                <span>(Supports Alpha)</span>
+                                <span>(Instant)</span>
                             </button>
-                            <button class="seg-btn" id="btnFmtMp4" onclick="setExportFormat('mp4')">
-                                MP4 VIDEO
-                                <span>(Standard)</span>
+                            <button class="seg-btn" id="btnFmtMov" onclick="setExportFormat('mov')">
+                                PRORES MOV
+                                <span>(Alpha Video)</span>
                             </button>
                         </div>
                     </div>
 
                     <button id="btnRecord" class="btn btn-rec" style="height: 40px; justify-content:center; margin-top:12px;">
-                        <i data-lucide="circle" class="icon-sm"></i> REC SEQUENCE
+                        <i data-lucide="images" class="icon-sm"></i> REC SEQUENCE
                     </button>
                     
                     <div id="recStatus" style="font-size:10px; color:var(--text-muted); text-align:center; margin-top:12px; font-family:var(--font-mono); min-height:14px; white-space: pre-wrap;"></div>
@@ -789,7 +790,8 @@ const app = {
     },
     isPlaying: true, lastTime: 0, nodes: [], selectionIndex: -1,
     isRecording: false, sequenceFrames: [], mediaRecorder: null, recordedChunks: [],
-    widthCache: {}, bidiCache: {}
+    widthCache: {}, bidiCache: {},
+    ffmpeg: null, ffmpegLoaded: false
 };
 
 const dom = {
@@ -835,7 +837,7 @@ const Tutorial = {
         { 
             target: '#t-step-color', 
             title: '3. Appearance', 
-            body: 'Customize your palette here. <br><b>Note:</b> "Transparent" background is only available for PNG Sequence export, not MP4. <br>Choosing matching colors will automatically shift the other element to maintain contrast.' 
+            body: 'Customize your palette here. <br><b>Note:</b> "Transparent" background is available for both PNG Sequence and ProRes MOV.' 
         },
         { 
             target: '#t-step-typo', 
@@ -860,7 +862,7 @@ const Tutorial = {
         { 
             target: '#t-step-export', 
             title: '7. Export', 
-            body: 'Select <b>PNG Sequence</b> (for Alpha) or <b>MP4</b>. Set your resolution, then click Record to capture the render in real-time.',
+            body: 'Select <b>PNG Sequence</b> (Instant) or <b>ProRes MOV</b> (Requires Processing). <br>Both formats support Alpha Channel for After Effects.',
             onEnter: () => { deselect(); }
         },
         { 
@@ -1027,6 +1029,80 @@ async function init() {
     setTimeout(() => Tutorial.start(), 1000);
 }
 
+// --- FFMPEG / PRORES LOGIC ---
+async function initFFmpeg() {
+    if(app.ffmpeg) return;
+    const { createFFmpeg } = FFmpeg;
+    // Core Path (Single Threaded) for GitHub Pages compatibility
+    app.ffmpeg = createFFmpeg({ 
+        log: true, 
+        corePath: 'https://unpkg.com/@ffmpeg/core-st@0.11.1/dist/ffmpeg-core.js' 
+    });
+    await app.ffmpeg.load();
+    app.ffmpegLoaded = true;
+    console.log("FFmpeg Ready");
+}
+
+async function renderProRes() {
+    if (!app.ffmpegLoaded) await initFFmpeg();
+    
+    dom.recStatus.textContent = "ENCODING VIDEO... (Wait)";
+    dom.zipProgressWrapper.style.display = "block";
+    dom.zipBar.style.width = "10%";
+
+    const fps = app.fps;
+    
+    // Write captured PNGs to FFmpeg filesystem
+    for (let i = 0; i < app.sequenceFrames.length; i++) {
+        const blob = app.sequenceFrames[i];
+        const name = `frame_${String(i).padStart(4, '0')}.png`;
+        const data = await fetch(URL.createObjectURL(blob)).then(r => r.arrayBuffer());
+        app.ffmpeg.FS('writeFile', name, new Uint8Array(data));
+        const pct = 10 + ((i / app.sequenceFrames.length) * 40);
+        dom.zipBar.style.width = `${pct}%`;
+    }
+
+    // Run FFmpeg (ProRes 4444 with Alpha)
+    try {
+        await app.ffmpeg.run(
+            '-framerate', String(fps),
+            '-pattern_type', 'glob', '-i', '*.png',
+            '-c:v', 'prores_ks', 
+            '-profile:v', '4444', 
+            '-pix_fmt', 'yuva444p10le', 
+            '-vendor', 'apl0', 
+            '-bits_per_mb', '8000',
+            'output.mov'
+        );
+    } catch(err) {
+        alert("Encoding Failed. See console.");
+        console.error(err);
+        dom.recStatus.textContent = "ERROR";
+        return;
+    }
+
+    dom.zipBar.style.width = "90%";
+
+    const data = app.ffmpeg.FS('readFile', 'output.mov');
+    const videoBlob = new Blob([data.buffer], { type: 'video/quicktime' });
+    saveAs(videoBlob, `Firma_ProRes_${Date.now()}.mov`);
+
+    // Cleanup
+    try {
+        app.ffmpeg.FS('unlink', 'output.mov');
+        for (let i = 0; i < app.sequenceFrames.length; i++) {
+            app.ffmpeg.FS('unlink', `frame_${String(i).padStart(4, '0')}.png`);
+        }
+    } catch(e){}
+
+    dom.recStatus.textContent = "DONE";
+    setTimeout(() => { 
+        dom.recStatus.textContent = ""; 
+        dom.zipProgressWrapper.style.display = "none"; 
+        dom.zipBar.style.width = "0%"; 
+    }, 3000);
+}
+
 function syncText() {
     const chars = Array.from(app.rawText); 
     app.nodes = chars.map((char, i) => {
@@ -1158,7 +1234,7 @@ function loop(t) {
         app.lastTime = t - (delta % interval);
         if(app.isPlaying) step();
         render(); 
-        if(app.isRecording && app.exportFormat === 'zip') captureZipFrame();
+        if(app.isRecording && (app.exportFormat === 'zip' || app.exportFormat === 'mov')) captureZipFrame();
     }
 }
 
@@ -1244,8 +1320,6 @@ function getContrastColor(hex) {
 }
 
 function setBgMode(mode, val) {
-    if(app.exportFormat === 'mp4' && mode === 'transparent') return;
-    
     app.bgMode = mode;
     if(mode === 'color') { 
         const newBg = (val || dom.inpBgColor.value).toUpperCase();
@@ -1275,17 +1349,20 @@ function setColor(hex) {
 function setExportFormat(fmt) {
     app.exportFormat = fmt;
     document.getElementById('btnFmtZip').classList.toggle('active', fmt === 'zip');
-    document.getElementById('btnFmtMp4').classList.toggle('active', fmt === 'mp4');
-    const transBlock = document.getElementById('bgSwatchTrans');
-    if(fmt === 'mp4') { transBlock.classList.add('disabled'); if(app.bgMode === 'transparent') setBgMode('color', '#000000'); }
-    else { transBlock.classList.remove('disabled'); }
+    document.getElementById('btnFmtMov').classList.toggle('active', fmt === 'mov');
+    
+    // Both ZIP and MOV support alpha
+    document.getElementById('bgSwatchTrans').classList.remove('disabled');
+    
     updateRecordButton();
+    if(fmt === 'mov') initFFmpeg(); // Preload engine
 }
 
 function updateRecordButton() {
-    const btn = dom.btnRecord; const isZip = app.exportFormat === 'zip';
+    const btn = dom.btnRecord; 
+    const isZip = app.exportFormat === 'zip';
     if(!app.isRecording) {
-        btn.innerHTML = `<i data-lucide="${isZip ? 'images' : 'film'}" class="icon-sm"></i> ${isZip ? 'REC SEQUENCE' : 'REC VIDEO'}`;
+        btn.innerHTML = `<i data-lucide="${isZip ? 'images' : 'film'}" class="icon-sm"></i> ${isZip ? 'REC SEQUENCE' : 'REC PRORES'}`;
         btn.classList.remove('recording'); dom.recStatus.textContent = "";
     } else { btn.innerHTML = `<i data-lucide="square" class="icon-sm"></i> STOP RECORDING`; btn.classList.add('recording'); }
     lucide.createIcons();
@@ -1294,12 +1371,14 @@ function updateRecordButton() {
 function toggleRecording() { app.isRecording ? stopRecording() : startRecording(); }
 function startRecording() {
     app.isRecording = true; updateRecordButton();
-    if (app.exportFormat === 'zip') { app.sequenceFrames = []; dom.recStatus.textContent = "CAPTURING..."; }
-    else { startVideoRecording(); }
+    // Reset buffers for both formats
+    app.sequenceFrames = []; 
+    dom.recStatus.textContent = "CAPTURING...";
 }
 function stopRecording() {
     app.isRecording = false; updateRecordButton();
-    if (app.exportFormat === 'zip') finalizeZip(); else stopVideoRecording();
+    if (app.exportFormat === 'zip') finalizeZip();
+    else if (app.exportFormat === 'mov') renderProRes();
 }
 
 function captureZipFrame() {
@@ -1320,17 +1399,6 @@ function finalizeZip() {
         setTimeout(() => { dom.recStatus.textContent = ""; dom.zipProgressWrapper.style.display = "none"; dom.zipBar.style.width = "0%"; }, 2000);
     });
 }
-
-function startVideoRecording() {
-    const stream = dom.canvas.captureStream(app.fps); app.recordedChunks = [];
-    let mime = ["video/mp4", "video/webm;codecs=h264", "video/webm"].find(t => MediaRecorder.isTypeSupported(t));
-    if(!mime) { alert("No video support"); return; }
-    app.mediaRecorder = new MediaRecorder(stream, { mimeType: mime, videoBitsPerSecond: 8000000 });
-    app.mediaRecorder.ondataavailable = e => { if(e.data.size > 0) app.recordedChunks.push(e.data); };
-    app.mediaRecorder.onstop = () => { saveAs(new Blob(app.recordedChunks, {type:mime}), `Firma_Video_${Date.now()}.${mime.includes('mp4')?'mp4':'webm'}`); dom.recStatus.textContent = "SAVED"; };
-    app.mediaRecorder.start(1000); dom.recStatus.textContent = "RECORDING...";
-}
-function stopVideoRecording() { if(app.mediaRecorder) app.mediaRecorder.stop(); }
 
 function buildGlyphGrid(node) {
     dom.glyphGrid.innerHTML = ''; const char = node.override || node.originalChar;
