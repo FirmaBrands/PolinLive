@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Fi!!!rma Font | Polin Live</title>
+    <title>Firma Font | Polin Live</title>
     
     <script src="coi-serviceworker.js"></script>
     
@@ -14,13 +14,13 @@
     <script src="https://cdn.jsdelivr.net/npm/mediabunny@1.0.1/dist/index.bundle.js"></script>
     
     <style>
-        /* ... styles from previous message ... */
+        /* [Original styles Omitted for Brevity] */
         :root { --bg-app: #09090b; --bg-panel: #18181b; --border: #3f3f46; --primary: #FF0054; --text-main: #e4e4e7; }
-        body { background: var(--bg-app); color: var(--text-main); height: 100vh; margin: 0; display: grid; grid-template-columns: 280px 1fr 300px; font-family: sans-serif; font-size: 12px; }
+        body { background: var(--bg-app); color: var(--text-main); height: 100vh; margin: 0; display: grid; grid-template-columns: 280px 1fr 300px; font-family: sans-serif; }
         aside { background: var(--bg-panel); border-right: 1px solid var(--border); border-left: 1px solid var(--border); overflow-y: auto; }
         .panel-content { padding: 20px; display: flex; flex-direction: column; gap: 20px; }
         textarea { width: 100%; background: #000; border: 1px solid var(--border); color: #fff; padding: 10px; border-radius: 4px; }
-        main { background: #000; display: flex; align-items: center; justify-content: center; }
+        main { background: #000; display: flex; align-items: center; justify-content: center; position: relative; }
         #canvas-wrapper { border: 1px solid #333; }
         #canvas-wrapper.transparent-bg { background-image: linear-gradient(45deg, #222 25%, transparent 25%), linear-gradient(-45deg, #222 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #222 75%), linear-gradient(-45deg, transparent 75%, #222 75%); background-size: 10px 10px; }
         .btn { width: 100%; padding: 10px; background: #27272a; border: 1px solid #3f3f46; color: #fff; cursor: pointer; border-radius: 4px; font-weight: 600; }
@@ -33,10 +33,9 @@
         <div class="panel-content">
             <h3>SOURCE CONTENT</h3>
             <textarea id="inpText">FIRMA סטודיו</textarea>
-            
             <h3>APPEARANCE</h3>
-            <button class="btn" onclick="setBgMode('transparent')">Transparent Background</button>
-            <button class="btn" onclick="setBgMode('color', '#000000')">Black Background</button>
+            <button class="btn" onclick="setBgMode('transparent')">Transparent Alpha</button>
+            <button class="btn" onclick="setBgMode('color', '#000000')">Solid Black</button>
         </div>
     </aside>
 
@@ -48,26 +47,22 @@
 
     <aside>
         <div class="panel-content">
-            <h3>EXPORT</h3>
+            <h3>EXPORT SETTINGS</h3>
             <div style="display:flex; gap:5px; margin-bottom:10px;">
                 <button id="btnFmtZip" class="btn" onclick="setExportFormat('zip')">PNG SEQ</button>
                 <button id="btnFmtMov" class="btn" onclick="setExportFormat('mov')">PRORES MOV</button>
             </div>
             <button id="btnRecord" class="btn btn-rec">REC SEQUENCE</button>
-            <div id="recStatus" style="text-align:center; font-family:monospace; margin-top:10px;"></div>
+            <div id="recStatus" style="text-align:center; font-family:monospace; margin-top:10px; font-size: 11px;"></div>
         </div>
     </aside>
 
 <script>
 const app = {
     rawText: "FIRMA סטודיו",
-    width: 1920, height: 1080,
-    fps: 24,
-    exportFormat: 'zip',
-    bgMode: 'transparent',
-    isRecording: false,
-    sequenceFrames: [],
-    bunny: null
+    width: 1920, height: 1080, fps: 24,
+    exportFormat: 'zip', bgMode: 'transparent',
+    isRecording: false, sequenceFrames: [], bunny: null
 };
 
 const dom = {
@@ -79,23 +74,32 @@ const dom = {
     canvasWrapper: document.getElementById('canvas-wrapper')
 };
 
-// --- INITIALIZATION ---
+// --- MEDIABUNNY LOGIC ---
 async function initMediaBunny() {
     if (app.bunny) return;
     dom.recStatus.textContent = "INITIALIZING ENCODER...";
+    
+    // Check if library is available
+    const Encoder = window.MediaBunny || (window.indexBundle ? window.indexBundle.MediaBunny : null);
+    
+    if (!Encoder) {
+        dom.recStatus.textContent = "ERROR: LIBRARY NOT LOADED";
+        throw new Error("MediaBunny library missing");
+    }
+
     try {
-        // Use the global MediaBunny object from the bundle
-        app.bunny = await window.MediaBunny.create({
+        app.bunny = await Encoder.create({
             width: app.width,
             height: app.height,
             fps: app.fps,
             format: 'mov',
             codec: 'prores',
-            pixelFormat: 'yuva444p10le' // Crucial for Alpha channel
+            pixelFormat: 'yuva444p10le' // Required for Alpha
         });
+        dom.recStatus.textContent = "ENCODER READY";
     } catch (e) {
-        console.error(e);
-        dom.recStatus.textContent = "ENCODER ERROR - REFRESH PAGE";
+        console.error("Initialization failed:", e);
+        dom.recStatus.textContent = "ERROR: REFRESH PAGE";
     }
 }
 
@@ -111,7 +115,7 @@ function render() {
     }
     
     ctx.fillStyle = "white";
-    ctx.font = "100px sans-serif";
+    ctx.font = "bold 100px sans-serif";
     ctx.textAlign = "center";
     ctx.fillText(app.rawText, app.width / 2, app.height / 2);
 }
@@ -124,8 +128,7 @@ function captureFrame() {
             app.sequenceFrames.push(blob);
             dom.recStatus.textContent = `FRAMES: ${app.sequenceFrames.length}`;
         });
-    } else {
-        // MediaBunny stream
+    } else if (app.bunny) {
         app.bunny.addFrame(dom.canvas);
         app.sequenceFrames.push(true);
         dom.recStatus.textContent = `RECORDING MOV: ${app.sequenceFrames.length}`;
@@ -135,18 +138,19 @@ function captureFrame() {
 async function stopRecording() {
     app.isRecording = false;
     dom.btnRecord.classList.remove('recording');
+    dom.btnRecord.textContent = app.exportFormat === 'zip' ? "REC SEQUENCE" : "REC PRORES";
     
     if (app.exportFormat === 'zip') {
-        dom.recStatus.textContent = "CREATING ZIP...";
+        dom.recStatus.textContent = "ZIPPING...";
         const zip = new JSZip();
         app.sequenceFrames.forEach((blob, i) => zip.file(`${i}.png`, blob));
         const content = await zip.generateAsync({ type: "blob" });
         saveAs(content, "sequence.zip");
-    } else {
-        dom.recStatus.textContent = "FINALIZING MOV...";
+    } else if (app.bunny) {
+        dom.recStatus.textContent = "ENCODING MOV...";
         const videoBlob = await app.bunny.save();
-        saveAs(videoBlob, "transparent_glitch.mov");
-        app.bunny = null; // Clean up
+        saveAs(videoBlob, "firma_transparent.mov");
+        app.bunny = null; 
     }
     dom.recStatus.textContent = "DONE";
 }
@@ -156,9 +160,12 @@ dom.btnRecord.onclick = async () => {
         stopRecording();
     } else {
         app.sequenceFrames = [];
-        if (app.exportFormat === 'mov') await initMediaBunny();
+        if (app.exportFormat === 'mov') {
+            await initMediaBunny();
+        }
         app.isRecording = true;
         dom.btnRecord.classList.add('recording');
+        dom.btnRecord.textContent = "STOP";
     }
 };
 
@@ -166,14 +173,11 @@ function setExportFormat(fmt) {
     app.exportFormat = fmt;
     document.getElementById('btnFmtZip').style.borderColor = fmt === 'zip' ? '#FF0054' : '#3f3f46';
     document.getElementById('btnFmtMov').style.borderColor = fmt === 'mov' ? '#FF0054' : '#3f3f46';
+    dom.btnRecord.textContent = fmt === 'zip' ? "REC SEQUENCE" : "REC PRORES";
 }
 
-function setBgMode(mode, color) {
-    app.bgMode = mode;
-    render();
-}
+function setBgMode(mode, color) { app.bgMode = mode; render(); }
 
-// Simple Loop
 function loop() {
     render();
     if (app.isRecording) captureFrame();
