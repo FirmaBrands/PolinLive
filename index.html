@@ -697,7 +697,7 @@
                                 <span>(Instant)</span>
                             </button>
                             <button class="seg-btn" id="btnFmtMov" onclick="setExportFormat('mov')">
-                                PRORES MOV
+                                QUICKTIME MOV
                                 <span>(Alpha Video)</span>
                             </button>
                         </div>
@@ -840,7 +840,7 @@ const Tutorial = {
         { 
             target: '#t-step-color', 
             title: '3. Appearance', 
-            body: 'Customize your palette here. <br><b>Note:</b> "Transparent" background is available for both PNG Sequence and ProRes MOV.' 
+            body: 'Customize your palette here. <br><b>Note:</b> "Transparent" background is available for both PNG Sequence and QuickTime MOV.' 
         },
         { 
             target: '#t-step-typo', 
@@ -865,7 +865,7 @@ const Tutorial = {
         { 
             target: '#t-step-export', 
             title: '7. Export', 
-            body: 'Select <b>PNG Sequence</b> (Instant) or <b>ProRes MOV</b> (Requires Processing). <br>Both formats support Alpha Channel for After Effects.',
+            body: 'Select <b>PNG Sequence</b> (Instant) or <b>QuickTime MOV</b> (Requires Processing). <br>Both formats support Alpha Channel for After Effects.',
             onEnter: () => { deselect(); }
         },
         { 
@@ -1032,7 +1032,7 @@ async function init() {
     setTimeout(() => Tutorial.start(), 1000);
 }
 
-// --- FFMPEG / PRORES LOGIC ---
+// --- FFMPEG / MOV LOGIC ---
 async function loadFFmpeg() {
     if (app.ffmpeg && app.ffmpeg.isLoaded()) return;
 
@@ -1055,7 +1055,7 @@ async function loadFFmpeg() {
     }
 }
 
-async function renderProRes() {
+async function renderAlphaVideo() {
     if (!app.ffmpeg || !app.ffmpeg.isLoaded()) await loadFFmpeg();
     
     dom.recStatus.textContent = "WRITING FRAMES...";
@@ -1075,17 +1075,15 @@ async function renderProRes() {
         dom.zipBar.style.width = `${pct}%`;
     }
 
-    dom.recStatus.textContent = "ENCODING PRORES 4444...";
+    dom.recStatus.textContent = "ENCODING ALPHA VIDEO...";
 
-    // Run FFmpeg (ProRes 4444 with Alpha)
+    // Run FFmpeg (QuickTime Animation / qtrle)
+    // This is the specific codec from your reference that ensures alpha compatibility.
     try {
         await app.ffmpeg.run(
             '-framerate', String(fps),
             '-pattern_type', 'glob', '-i', '*.png',
-            '-c:v', 'prores_ks', 
-            '-profile:v', '4444', 
-            '-pix_fmt', 'yuva444p10le', // 10-bit Alpha
-            '-bits_per_mb', '8000',
+            '-c:v', 'qtrle',  // QuickTime Animation (Lossless + Alpha)
             '-y',
             'output.mov'
         );
@@ -1100,7 +1098,7 @@ async function renderProRes() {
 
     const data = app.ffmpeg.FS('readFile', 'output.mov');
     const videoBlob = new Blob([data.buffer], { type: 'video/quicktime' });
-    saveAs(videoBlob, `Firma_ProRes_Alpha_${Date.now()}.mov`);
+    saveAs(videoBlob, `Firma_Alpha_Mov_${Date.now()}.mov`);
 
     // Cleanup
     try {
@@ -1178,6 +1176,7 @@ function render() {
     const ctx = dom.ctx; const w = app.width; const h = app.height;
     
     // IMPORTANT: Clear rect is needed for ALPHA
+    // Always clear the canvas first.
     ctx.clearRect(0, 0, w, h);
 
     if (app.bgMode === 'color') {
@@ -1385,7 +1384,7 @@ function updateRecordButton() {
     const btn = dom.btnRecord; 
     const isZip = app.exportFormat === 'zip';
     if(!app.isRecording) {
-        btn.innerHTML = `<i data-lucide="${isZip ? 'images' : 'film'}" class="icon-sm"></i> ${isZip ? 'REC SEQUENCE' : 'REC PRORES'}`;
+        btn.innerHTML = `<i data-lucide="${isZip ? 'images' : 'film'}" class="icon-sm"></i> ${isZip ? 'REC SEQUENCE' : 'REC VIDEO'}`;
         btn.classList.remove('recording'); dom.recStatus.textContent = "";
     } else { btn.innerHTML = `<i data-lucide="square" class="icon-sm"></i> STOP RECORDING`; btn.classList.add('recording'); }
     lucide.createIcons();
@@ -1395,7 +1394,7 @@ function toggleRecording() {
     if (!app.isRecording && app.exportFormat === 'mov') {
         // Safety check for COI
         if (!crossOriginIsolated) {
-             alert("Security Warning: 'SharedArrayBuffer' is not available. This prevents ProRes encoding.\n\nEnsure 'coi-serviceworker.min.js' is loaded and the server is sending correct headers.");
+             alert("Security Warning: 'SharedArrayBuffer' is not available. This prevents video encoding.\n\nEnsure 'coi-serviceworker.min.js' is loaded and the server is sending correct headers.");
              return;
         }
     }
@@ -1411,7 +1410,7 @@ function startRecording() {
 function stopRecording() {
     app.isRecording = false; updateRecordButton();
     if (app.exportFormat === 'zip') finalizeZip();
-    else if (app.exportFormat === 'mov') renderProRes();
+    else if (app.exportFormat === 'mov') renderAlphaVideo();
 }
 
 function finalizeZip() {
