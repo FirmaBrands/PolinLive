@@ -2,191 +2,85 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Firma Font | Polin Live</title>
-    
-    <script src="coi-serviceworker.js"></script>
-    
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
-    <script src="https://unpkg.com/lucide@latest"></script>
-    
-    <script src="https://cdn.jsdelivr.net/npm/mediabunny@1.0.1/dist/index.bundle.js"></script>
-    
+    <title>MediaBunny Transparency Test</title>
+    <script src="https://cdn.jsdelivr.net/npm/mediabunny@latest/dist/index.bundle.min.js"></script>
     <style>
-        /* [Original styles Omitted for Brevity] */
-        :root { --bg-app: #09090b; --bg-panel: #18181b; --border: #3f3f46; --primary: #FF0054; --text-main: #e4e4e7; }
-        body { background: var(--bg-app); color: var(--text-main); height: 100vh; margin: 0; display: grid; grid-template-columns: 280px 1fr 300px; font-family: sans-serif; }
-        aside { background: var(--bg-panel); border-right: 1px solid var(--border); border-left: 1px solid var(--border); overflow-y: auto; }
-        .panel-content { padding: 20px; display: flex; flex-direction: column; gap: 20px; }
-        textarea { width: 100%; background: #000; border: 1px solid var(--border); color: #fff; padding: 10px; border-radius: 4px; }
-        main { background: #000; display: flex; align-items: center; justify-content: center; position: relative; }
-        #canvas-wrapper { border: 1px solid #333; }
-        #canvas-wrapper.transparent-bg { background-image: linear-gradient(45deg, #222 25%, transparent 25%), linear-gradient(-45deg, #222 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #222 75%), linear-gradient(-45deg, transparent 75%, #222 75%); background-size: 10px 10px; }
-        .btn { width: 100%; padding: 10px; background: #27272a; border: 1px solid #3f3f46; color: #fff; cursor: pointer; border-radius: 4px; font-weight: 600; }
-        .btn-rec.recording { background: #FF3924; }
+        body { background: #111; color: white; font-family: sans-serif; display: flex; flex-direction: column; align-items: center; gap: 20px; padding: 50px; }
+        canvas { border: 1px solid #333; background-image: linear-gradient(45deg, #222 25%, transparent 25%), linear-gradient(-45deg, #222 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #222 75%), linear-gradient(-45deg, transparent 75%, #222 75%); background-size: 20px 20px; }
+        button { padding: 10px 20px; cursor: pointer; background: #FF0054; border: none; color: white; border-radius: 4px; font-weight: bold; }
+        #status { font-family: monospace; color: #aaa; }
     </style>
 </head>
 <body>
 
-    <aside>
-        <div class="panel-content">
-            <h3>SOURCE CONTENT</h3>
-            <textarea id="inpText">FIRMA סטודיו</textarea>
-            <h3>APPEARANCE</h3>
-            <button class="btn" onclick="setBgMode('transparent')">Transparent Alpha</button>
-            <button class="btn" onclick="setBgMode('color', '#000000')">Solid Black</button>
-        </div>
-    </aside>
-
-    <main>
-        <div id="canvas-wrapper">
-            <canvas id="exportCanvas" width="1920" height="1080"></canvas>
-        </div>
-    </main>
-
-    <aside>
-        <div class="panel-content">
-            <h3>EXPORT SETTINGS</h3>
-            <div style="display:flex; gap:5px; margin-bottom:10px;">
-                <button id="btnFmtZip" class="btn" onclick="setExportFormat('zip')">PNG SEQ</button>
-                <button id="btnFmtMov" class="btn" onclick="setExportFormat('mov')">PRORES MOV</button>
-            </div>
-            <button id="btnRecord" class="btn btn-rec">REC SEQUENCE</button>
-            <div id="recStatus" style="text-align:center; font-family:monospace; margin-top:10px; font-size: 11px;"></div>
-        </div>
-    </aside>
-
-<script>
-const app = {
-    rawText: "FIRMA סטודיו",
-    width: 1920, height: 1080, fps: 24,
-    exportFormat: 'zip', bgMode: 'transparent',
-    isRecording: false, sequenceFrames: [], bunny: null
-};
-
-const dom = {
-    input: document.getElementById('inpText'),
-    canvas: document.getElementById('exportCanvas'),
-    ctx: document.getElementById('exportCanvas').getContext('2d', { alpha: true }),
-    btnRecord: document.getElementById('btnRecord'),
-    recStatus: document.getElementById('recStatus'),
-    canvasWrapper: document.getElementById('canvas-wrapper')
-};
-
-// --- MEDIABUNNY LOGIC ---
-async function initMediaBunny() {
-    if (app.bunny) return;
-    dom.recStatus.textContent = "INITIALIZING ENCODER...";
+    <h2>MediaBunny ProRes Alpha Test</h2>
+    <canvas id="testCanvas" width="400" height="400"></canvas>
     
-    // Check if library is available
-    const Encoder = window.MediaBunny || (window.indexBundle ? window.indexBundle.MediaBunny : null);
-    
-    if (!Encoder) {
-        dom.recStatus.textContent = "ERROR: LIBRARY NOT LOADED";
-        throw new Error("MediaBunny library missing");
-    }
+    <button id="btnStart">1. GENERATE & EXPORT MOV</button>
+    <div id="status">Ready.</div>
 
-    try {
-        app.bunny = await Encoder.create({
-            width: app.width,
-            height: app.height,
-            fps: app.fps,
-            format: 'mov',
-            codec: 'prores',
-            pixelFormat: 'yuva444p10le' // Required for Alpha
-        });
-        dom.recStatus.textContent = "ENCODER READY";
-    } catch (e) {
-        console.error("Initialization failed:", e);
-        dom.recStatus.textContent = "ERROR: REFRESH PAGE";
-    }
-}
+    <script>
+        const canvas = document.getElementById('testCanvas');
+        const ctx = canvas.getContext('2d');
+        const status = document.getElementById('status');
 
-function render() {
-    const ctx = dom.ctx;
-    if (app.bgMode === 'transparent') {
-        ctx.clearRect(0, 0, app.width, app.height);
-        dom.canvasWrapper.classList.add('transparent-bg');
-    } else {
-        ctx.fillStyle = "#000000";
-        ctx.fillRect(0, 0, app.width, app.height);
-        dom.canvasWrapper.classList.remove('transparent-bg');
-    }
-    
-    ctx.fillStyle = "white";
-    ctx.font = "bold 100px sans-serif";
-    ctx.textAlign = "center";
-    ctx.fillText(app.rawText, app.width / 2, app.height / 2);
-}
-
-function captureFrame() {
-    if (!app.isRecording) return;
-
-    if (app.exportFormat === 'zip') {
-        dom.canvas.toBlob(blob => {
-            app.sequenceFrames.push(blob);
-            dom.recStatus.textContent = `FRAMES: ${app.sequenceFrames.length}`;
-        });
-    } else if (app.bunny) {
-        app.bunny.addFrame(dom.canvas);
-        app.sequenceFrames.push(true);
-        dom.recStatus.textContent = `RECORDING MOV: ${app.sequenceFrames.length}`;
-    }
-}
-
-async function stopRecording() {
-    app.isRecording = false;
-    dom.btnRecord.classList.remove('recording');
-    dom.btnRecord.textContent = app.exportFormat === 'zip' ? "REC SEQUENCE" : "REC PRORES";
-    
-    if (app.exportFormat === 'zip') {
-        dom.recStatus.textContent = "ZIPPING...";
-        const zip = new JSZip();
-        app.sequenceFrames.forEach((blob, i) => zip.file(`${i}.png`, blob));
-        const content = await zip.generateAsync({ type: "blob" });
-        saveAs(content, "sequence.zip");
-    } else if (app.bunny) {
-        dom.recStatus.textContent = "ENCODING MOV...";
-        const videoBlob = await app.bunny.save();
-        saveAs(videoBlob, "firma_transparent.mov");
-        app.bunny = null; 
-    }
-    dom.recStatus.textContent = "DONE";
-}
-
-dom.btnRecord.onclick = async () => {
-    if (app.isRecording) {
-        stopRecording();
-    } else {
-        app.sequenceFrames = [];
-        if (app.exportFormat === 'mov') {
-            await initMediaBunny();
+        // Draw a simple animated circle with transparency
+        function drawFrame(angle) {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.fillStyle = '#FF0054';
+            ctx.beginPath();
+            ctx.arc(200 + Math.cos(angle) * 100, 200 + Math.sin(angle) * 100, 50, 0, Math.PI * 2);
+            ctx.fill();
         }
-        app.isRecording = true;
-        dom.btnRecord.classList.add('recording');
-        dom.btnRecord.textContent = "STOP";
-    }
-};
 
-function setExportFormat(fmt) {
-    app.exportFormat = fmt;
-    document.getElementById('btnFmtZip').style.borderColor = fmt === 'zip' ? '#FF0054' : '#3f3f46';
-    document.getElementById('btnFmtMov').style.borderColor = fmt === 'mov' ? '#FF0054' : '#3f3f46';
-    dom.btnRecord.textContent = fmt === 'zip' ? "REC SEQUENCE" : "REC PRORES";
-}
+        document.getElementById('btnStart').onclick = async () => {
+            status.innerText = "Initializing MediaBunny...";
+            
+            try {
+                // 1. Initialize Bunny
+                const bunny = new MediaBunny();
+                await bunny.init();
 
-function setBgMode(mode, color) { app.bgMode = mode; render(); }
+                const frames = [];
+                const totalFrames = 30;
 
-function loop() {
-    render();
-    if (app.isRecording) captureFrame();
-    requestAnimationFrame(loop);
-}
+                // 2. Capture frames as Blobs
+                status.innerText = "Capturing Frames...";
+                for (let i = 0; i < totalFrames; i++) {
+                    drawFrame((i / totalFrames) * Math.PI * 2);
+                    const blob = await new Promise(res => canvas.toBlob(res, 'image/png'));
+                    frames.push(blob);
+                }
 
-dom.input.oninput = (e) => app.rawText = e.target.value;
-setExportFormat('zip');
-loop();
-</script>
+                // 3. Export to ProRes 4444 (The "Alpha" format)
+                status.innerText = "Encoding ProRes 4444...";
+                const videoBlob = await bunny.export(frames, {
+                    format: 'mov',
+                    fps: 30,
+                    // Critical parameters for Transparency:
+                    args: [
+                        '-c:v', 'prores_ks',
+                        '-profile:v', '44',        // 4444 profile
+                        '-pix_fmt', 'yuva444p10le' // YUV + Alpha
+                    ]
+                });
+
+                // 4. Download
+                const url = URL.createObjectURL(videoBlob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'transparency_test.mov';
+                a.click();
+                
+                status.innerText = "Done! Check your downloads.";
+            } catch (err) {
+                console.error(err);
+                status.innerText = "Error: " + err.message;
+            }
+        };
+
+        // Static preview
+        drawFrame(0);
+    </script>
 </body>
 </html>
