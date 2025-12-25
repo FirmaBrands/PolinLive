@@ -5,14 +5,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Firma Font | Polin Live</title>
     
+    <script src="coi-serviceworker.js"></script>
+    
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
     
-    <script type="module">
-        import { VideoEncoder } from "https://cdn.jsdelivr.net/npm/mediabunny@latest/dist/index.js";
-        window.MediabunnyEncoder = VideoEncoder;
-    </script>
+    <script src="https://cdn.jsdelivr.net/npm/mediabunny@1.0.1/dist/index.min.js"></script>
     
     <style>
         :root {
@@ -28,8 +27,8 @@
             --selection: #FF0054;    
             --text-main: #e4e4e7;
             --text-muted: #a1a1aa;
-            --font-ui: 'Inter', -apple-system, sans-serif;
-            --font-mono: 'JetBrains Mono', monospace;
+            --font-ui: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
             --radius-sm: 4px;
             --radius-md: 6px;
         }
@@ -37,99 +36,177 @@
         * { box-sizing: border-box; outline: none; user-select: none; }
         body {
             background: var(--bg-app); color: var(--text-main); font-family: var(--font-ui);
-            height: 100vh; overflow: hidden; display: grid; grid-template-columns: 280px 1fr 300px; margin: 0; font-size: 12px;
+            height: 100vh; overflow: hidden; display: grid; grid-template-columns: 280px 1fr 300px; 
+            margin: 0; font-size: 12px;
         }
 
-        /* --- UI COMPONENTS --- */
-        aside { background: var(--bg-panel); border-right: 1px solid var(--border); border-left: 1px solid var(--border); display: flex; flex-direction: column; overflow-y: auto; z-index: 10; }
-        .panel-header { padding: 0 16px; height: 48px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; background: var(--bg-panel); }
-        .brand { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 13px; color: #fff; }
-        .brand-logo-container { width: 24px; height: 24px; background: #000; border-radius: 6px; display: flex; align-items: center; justify-content: center; }
-        .brand-logo-container svg { width: 14px; fill: #fff; }
-        .panel-content { padding: 20px; display: flex; flex-direction: column; gap: 24px; }
-        .section-title { font-size: 11px; font-weight: 600; text-transform: uppercase; color: var(--text-muted); display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-thumb { background: #3f3f46; border-radius: 3px; }
 
-        textarea { width: 100%; background: var(--bg-input); border: 1px solid var(--border); color: #fff; padding: 12px; font-size: 16px; border-radius: var(--radius-md); resize: vertical; min-height: 80px; }
-        .control-row { display: grid; grid-template-columns: 80px 1fr 45px; align-items: center; gap: 10px; min-height: 28px; }
-        .num-input { width: 100%; background: transparent; border: 1px solid transparent; color: #fff; font-family: var(--font-mono); font-size: 11px; text-align: right; }
+        .icon { width: 14px; height: 14px; stroke-width: 2px; }
+        .icon-sm { width: 12px; height: 12px; }
+
+        aside { background: var(--bg-panel); border-right: 1px solid var(--border); border-left: 1px solid var(--border); display: flex; flex-direction: column; overflow-y: auto; }
+        .panel-header { padding: 0 16px; height: 48px; border-bottom: 1px solid var(--border); background: var(--bg-panel); display: flex; align-items: center; justify-content: space-between; flex-shrink: 0; position: sticky; top: 0; z-index: 20; }
+        .brand { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 13px; color: #fff; }
+        .brand span { opacity: 0.5; font-weight: 400; }
+        .brand-logo-container { width: 24px; height: 24px; background: #000; border-radius: 6px; display: flex; align-items: center; justify-content: center; }
+        .brand-logo-container svg { width: 14px; }
+        .brand-logo-container svg polygon { fill: #fff; }
+
+        .panel-content { padding: 20px; display: flex; flex-direction: column; gap: 28px; }
+        .section-group { display: flex; flex-direction: column; gap: 12px; }
+        .section-title { font-size: 11px; font-weight: 600; text-transform: uppercase; color: var(--text-muted); display: flex; align-items: center; gap: 8px; }
         
-        .color-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
-        .swatch { aspect-ratio: 1.4; border-radius: 4px; cursor: pointer; border: 1px solid rgba(255,255,255,0.1); }
-        .swatch.active { border-color: #fff; box-shadow: 0 0 0 2px var(--primary); }
-        .swatch-wide { width: 100%; height: 32px; border-radius: 4px; cursor: pointer; border: 1px solid #444; display: flex; align-items: center; justify-content: center; background: #1a1a1a; margin-bottom: 8px; font-weight: 700; font-size: 10px; }
-        .swatch-wide.active { border-color: var(--primary); color: var(--primary); }
+        textarea { width: 100%; background: var(--bg-input); border: 1px solid var(--border); color: var(--text-main); padding: 12px; font-family: 'Firma', var(--font-mono); font-size: 16px; border-radius: var(--radius-md); resize: vertical; min-height: 80px; }
+        .control-row { display: grid; grid-template-columns: 90px 1fr 50px; align-items: center; gap: 10px; min-height: 28px; }
+        .control-label { color: var(--text-muted); font-size: 11px; }
+        .num-input { width: 100%; background: transparent; border: 1px solid transparent; color: #fff; font-family: var(--font-mono); font-size: 11px; text-align: right; }
+        input[type="range"] { -webkit-appearance: none; width: 100%; background: transparent; }
+        input[type="range"]::-webkit-slider-runnable-track { height: 4px; background: #333; }
+        input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; width: 12px; height: 12px; background: #888; border-radius: 50%; margin-top: -4px; }
+
+        .color-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+        .swatch { aspect-ratio: 1.4; border-radius: 6px; cursor: pointer; border: 1px solid rgba(255,255,255,0.1); position: relative; }
+        .swatch.active { border-color: #fff; box-shadow: 0 0 0 3px rgba(255,0,84,0.3); }
+        .swatch.custom input { position: absolute; opacity: 0; inset: 0; cursor: pointer; }
+        .swatch.custom { background: conic-gradient(red, yellow, lime, aqua, blue, magenta, red); }
+
+        .swatch-wide { width: 100%; height: 36px; border-radius: 6px; cursor: pointer; border: 1px solid rgba(255,255,255,0.1); display: flex; align-items: center; justify-content: center; background: #1a1a1a; background-image: linear-gradient(45deg, #333 25%, transparent 25%), linear-gradient(-45deg, #333 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #333 75%), linear-gradient(-45deg, transparent 75%, #333 75%); background-size: 8px 8px; }
+        .swatch-wide.active { border-color: #fff; }
 
         .btn { width: 100%; height: 32px; font-size: 11px; font-weight: 600; border-radius: var(--radius-sm); cursor: pointer; background: var(--bg-header); border: 1px solid var(--border); color: #fff; display: flex; align-items: center; justify-content: center; gap: 8px; }
-        .btn-primary { background: var(--primary); border: none; }
+        .btn-primary { background: var(--primary); border-color: var(--primary); }
         .btn-rec.recording { background: var(--accent); animation: pulse 2s infinite; }
-        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.7; } }
+        @keyframes pulse { 50% { opacity: 0.7; } }
 
-        .seg-control { background: var(--bg-input); border: 1px solid var(--border); border-radius: 4px; display: flex; padding: 2px; }
-        .seg-btn { flex: 1; border: none; background: transparent; color: var(--text-muted); font-size: 9px; font-weight: 700; padding: 6px; cursor: pointer; border-radius: 2px; }
+        .seg-control { background: var(--bg-input); border: 1px solid var(--border); border-radius: var(--radius-sm); display: flex; padding: 2px; height: 36px; }
+        .seg-btn { flex: 1; border: none; background: transparent; color: var(--text-muted); font-size: 10px; font-weight: 600; cursor: pointer; border-radius: 2px; display: flex; flex-direction: column; align-items: center; justify-content: center; }
         .seg-btn.active { background: var(--bg-panel); color: #fff; }
 
-        main { flex: 1; background: #050505; display: flex; align-items: center; justify-content: center; overflow: hidden; }
-        #canvas-wrapper { border: 1px solid #333; box-shadow: 0 20px 50px rgba(0,0,0,0.5); }
-        #canvas-wrapper.transparent-bg { background-image: linear-gradient(45deg, #222 25%, transparent 25%), linear-gradient(-45deg, #222 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #222 75%), linear-gradient(-45deg, transparent 75%, #222 75%); background-size: 20px 20px; }
+        .toggle-row { display: flex; align-items: center; justify-content: space-between; cursor: pointer; }
+        .toggle-switch { width: 32px; height: 18px; background: #333; border-radius: 10px; position: relative; transition: 0.2s; }
+        .toggle-switch::after { content:''; position: absolute; left: 2px; top: 2px; width: 12px; height: 12px; background: #aaa; border-radius: 50%; transition: 0.2s; }
+        input[type="checkbox"]:checked + .toggle-switch { background: var(--primary); }
+        input[type="checkbox"]:checked + .toggle-switch::after { transform: translateX(14px); background: #fff; }
+
+        main { background: #050505; display: flex; align-items: center; justify-content: center; overflow: hidden; position: relative; }
+        .viewport { display: flex; align-items: center; justify-content: center; background-image: radial-gradient(#333 1px, transparent 1px); background-size: 24px 24px; width: 100%; height: 100%; }
+        #canvas-wrapper { box-shadow: 0 20px 50px rgba(0,0,0,0.5); border: 1px solid #333; background: #000; }
+        #canvas-wrapper.transparent-bg { background-image: linear-gradient(45deg, #444 25%, transparent 25%), linear-gradient(-45deg, #444 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #444 75%), linear-gradient(-45deg, transparent 75%, #444 75%); background-size: 20px 20px; background-color: #333; }
 
         #panel-letter { display: none; }
         body.has-selection #panel-global { display: none; }
-        body.has-selection #panel-letter { display: flex; }
+        body.has-selection #panel-letter { display: block; }
+
+        .inspector-hero { padding: 24px 20px; background: var(--bg-header); border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 16px; }
+        .hero-char { width: 56px; height: 56px; background: var(--bg-input); border: 1px solid var(--border); display: flex; align-items: center; justify-content: center; font-size: 32px; font-weight: 700; border-radius: var(--radius-md); }
         
-        #zipProgressWrapper { width: 100%; height: 4px; background: #222; margin-top: 10px; display: none; border-radius: 2px; overflow: hidden; }
+        .glyph-picker { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+        .glyph-option { aspect-ratio: 1; background: var(--bg-input); border: 1px solid var(--border); border-radius: var(--radius-md); cursor: pointer; display: flex; align-items: center; justify-content: center; opacity: 0.5; position: relative; }
+        .glyph-option.active { opacity: 1; border-color: var(--primary); background: rgba(255,0,84,0.1); }
+        .glyph-preview { font-family: 'Firma'; font-size: 24px; }
+        .glyph-label { position: absolute; bottom: 2px; right: 3px; font-size: 8px; opacity: 0.6; font-family: var(--font-mono); }
+
+        #zipProgressWrapper { width: 100%; height: 4px; background: #222; margin-top: 12px; display: none; border-radius: 2px; overflow: hidden; }
         #zipBar { width: 0%; height: 100%; background: var(--primary); transition: width 0.1s; }
+        .credit-link { position: fixed; bottom: 24px; left: 24px; color: #FF0054; text-decoration: none; font-size: 10px; font-weight: 700; z-index: 99; }
     </style>
 </head>
-<body class="has-selection">
+<body>
+
+    <a href="https://x10guy.studio" target="_blank" class="credit-link">MADE BY גיא אקשטיין המלך</a>
 
     <aside>
         <div class="panel-header">
-            <div class="brand"><div class="brand-logo-container"><svg viewBox="0 0 502 447"><polygon points="252.68 283.12 364.65 283.12 411.29 186.87 206.77 186.87 163.53 96.26 455.18 96.26 501.78 0 0 0 212.97 446.31 330.54 446.31 252.68 283.12"/></svg></div> FIRMA<span>FONT</span></div>
+            <div class="brand"><div class="brand-logo-container"><svg viewBox="0 0 502 447"><polygon points="252.68 283.12 364.65 283.12 411.29 186.87 206.77 186.87 163.53 96.26 455.18 96.26 501.78 0 0 0 212.97 446.31 330.54 446.31 252.68 283.12"/></svg></div>FIRMA<span>FONT</span></div>
         </div>
+
         <div class="panel-content">
             <div class="section-group">
-                <div class="section-title">Source</div>
+                <div class="section-title"><i data-lucide="type" class="icon-sm"></i> Source Content</div>
                 <textarea id="inpText" spellcheck="false">FIRMA סטודיו
 2025</textarea>
             </div>
+            <div style="height:1px; background:var(--border);"></div>
             <div class="section-group">
-                <div class="section-title">Appearance</div>
+                <div class="section-title"><i data-lucide="palette" class="icon-sm"></i> Appearance</div>
                 <div class="color-grid" id="gridTextColor">
-                    <div class="swatch" data-color="#FFFFFF" style="background:#fff"></div>
-                    <div class="swatch" data-color="#FF0054" style="background:#FF0054"></div>
-                    <div class="swatch" data-color="#DFF946" style="background:#DFF946"></div>
-                    <div class="swatch" data-color="#000000" style="background:#000"></div>
+                    <div class="swatch custom"><input type="color" id="inpColor" value="#ffffff"></div>
+                    <div class="swatch" data-color="#FFFFFF" onclick="setColor('#FFFFFF')" style="background:#FFFFFF"></div>
+                    <div class="swatch" data-color="#000000" onclick="setColor('#000000')" style="background:#000000"></div>
+                    <div class="swatch" data-color="#FF0054" onclick="setColor('#FF0054')" style="background:#FF0054"></div>
+                    <div class="swatch" data-color="#FF3924" onclick="setColor('#FF3924')" style="background:#FF3924"></div>
+                    <div class="swatch" data-color="#DFF946" onclick="setColor('#DFF946')" style="background:#DFF946"></div>
+                    <div class="swatch" data-color="#00A450" onclick="setColor('#00A450')" style="background:#00A450"></div>
+                    <div class="swatch" data-color="#924CEE" onclick="setColor('#924CEE')" style="background:#924CEE"></div>
                 </div>
-                <div id="bgSwatchTrans" class="swatch-wide" onclick="setBgMode('transparent')">TRANSPARENT</div>
+                <div id="bgSwatchTrans" class="swatch-wide" onclick="setBgMode('transparent')">Transparent (Alpha)</div>
+                <div class="color-grid" id="gridBgColor">
+                    <div class="swatch custom"><input type="color" id="inpBgColor" value="#000000"></div>
+                    <div class="swatch" data-color="#000000" onclick="setBgMode('color', '#000000')" style="background:#000000"></div>
+                    <div class="swatch" data-color="#FFFFFF" onclick="setBgMode('color', '#FFFFFF')" style="background:#FFFFFF"></div>
+                    <div class="swatch" data-color="#FF0054" onclick="setBgMode('color', '#FF0054')" style="background:#FF0054"></div>
+                </div>
+            </div>
+            <div class="section-group">
+                <div class="section-title"><i data-lucide="case-sensitive" class="icon-sm"></i> Typography</div>
+                <div class="control-row">
+                    <span class="control-label">Size</span>
+                    <input type="range" id="slSize" min="24" max="800" value="150">
+                    <input type="number" id="numSize" class="num-input" value="150">
+                </div>
+                <label class="toggle-row">
+                    <span class="control-label">Lock Grid</span>
+                    <input type="checkbox" id="chkLockLayout" style="display:none">
+                    <div class="toggle-switch"></div>
+                </label>
             </div>
         </div>
     </aside>
 
-    <main id="viewport">
-        <div id="canvas-wrapper">
-            <canvas id="exportCanvas" width="1920" height="1080"></canvas>
+    <main>
+        <div class="viewport">
+            <div id="canvas-wrapper"><canvas id="exportCanvas" width="1920" height="1080"></canvas></div>
         </div>
     </main>
 
     <aside>
         <div id="panel-global">
-            <div class="panel-header"><div>SCENE</div></div>
+            <div class="panel-header"><div style="color:#fff; font-weight:600;">SCENE SETTINGS</div></div>
             <div class="panel-content">
                 <div class="section-group">
-                    <div class="section-title">Engine</div>
+                    <div class="section-title">Glitch Engine</div>
                     <div class="control-row"><span>Speed</span><input type="range" id="slFps" min="1" max="60" value="24"><input type="number" id="numFps" class="num-input" value="24"></div>
+                    <div class="control-row"><span>Count</span><input type="range" id="slMax" min="0" max="25" value="3"><input type="text" id="numMax" class="num-input" value="3"></div>
                 </div>
                 <div style="flex:1"></div>
-                <div class="section-group">
+                <div style="border-top:1px solid var(--border); padding-top:24px;">
                     <div class="section-title">Export</div>
+                    <select id="selResolution" style="width:100%; background:#000; color:#fff; padding:8px; margin-bottom:10px; border:1px solid var(--border)">
+                        <option value="1920,1080">HD 1920x1080</option>
+                        <option value="1080,1920">Vertical 1080x1920</option>
+                    </select>
                     <div class="seg-control">
-                        <button class="seg-btn active" onclick="setFormat('zip')">PNG SEQ</button>
-                        <button class="seg-btn" onclick="setFormat('mov')">MOV PRORES</button>
+                        <button class="seg-btn active" id="btnFmtZip" onclick="setExportFormat('zip')">PNG SEQ</button>
+                        <button class="seg-btn" id="btnFmtMov" onclick="setExportFormat('mov')">PRORES MOV</button>
                     </div>
-                    <button id="btnRecord" class="btn btn-primary btn-rec" onclick="toggleRecording()">START RECORDING</button>
-                    <div id="recStatus" style="text-align:center; font-size:10px; margin-top:8px; opacity:0.6;"></div>
+                    <button id="btnRecord" class="btn btn-rec" style="margin-top:12px; height:40px;">REC SEQUENCE</button>
+                    <div id="recStatus" style="font-size:10px; text-align:center; margin-top:8px; font-family:var(--font-mono);"></div>
                     <div id="zipProgressWrapper"><div id="zipBar"></div></div>
                 </div>
+            </div>
+        </div>
+
+        <div id="panel-letter">
+            <div class="panel-header" style="background:var(--primary);">INSPECTOR <button id="btnCloseInsp" style="float:right; background:none; border:none; color:#fff; cursor:pointer">DONE</button></div>
+            <div class="inspector-hero">
+                <div class="hero-char" id="inspCharDisplay">A</div>
+                <button id="btnLock" class="btn" style="width:auto; padding:0 12px;">LOCK</button>
+            </div>
+            <div class="panel-content">
+                <div id="glyphGrid" class="glyph-picker"></div>
+                <button id="btnApplyAll" class="btn" style="margin-top:10px">Apply to All</button>
             </div>
         </div>
     </aside>
@@ -139,109 +216,174 @@ const FONT_NAME = 'Firma';
 const FONT_URL = 'Firma.otf';
 
 const app = {
-    rawText: "FIRMA סטודיו\n2025", textColor: '#ffffff', fontSize: 150, tracking: 0, lineHeight: 1.0,
-    width: 1920, height: 1080, fps: 24, exportFormat: 'zip', bgMode: 'transparent', bgColor: '#000',
-    isRecording: false, sequenceFrames: [], lastTime: 0, nodes: [], selectionIndex: -1,
-    charMap: { 'A': ['ss01','ss02'], 'F': ['ss01','ss03'], 'א': ['ss01'] }
+    rawText: "FIRMA סטודיו\n2025", textColor: '#ffffff', fontSize: 150, tracking: 0, lineHeight: 1.0, 
+    lockLayout: false, width: 1920, height: 1080, fps: 24, maxConcurrent: 3, probability: 0.4, minDuration: 8,
+    exportFormat: 'zip', bgMode: 'transparent', bgColor: '#000000', sequenceLimit: 300,
+    charSettings: {}, isPlaying: true, lastTime: 0, nodes: [], selectionIndex: -1,
+    isRecording: false, sequenceFrames: [], bunny: null,
+    charMap: {
+        '0':['ss02'],'A':['ss01','ss02','ss03','ss04'],'F':['ss01','ss03','ss04','ss05','ss06'],'M':['ss02','ss03'],'R':['ss01','ss02','ss03','ss04'],
+        'א':['ss01'],'ה':['ss01','ss02'],'מ':['ss01','ss02']
+    }
 };
 
 const dom = {
     input: document.getElementById('inpText'),
     canvas: document.getElementById('exportCanvas'),
+    canvasWrapper: document.getElementById('canvas-wrapper'),
     ctx: document.getElementById('exportCanvas').getContext('2d', { alpha: true }),
+    inpColor: document.getElementById('inpColor'),
+    inpBgColor: document.getElementById('inpBgColor'),
+    inspCharDisplay: document.getElementById('inspCharDisplay'),
+    btnLock: document.getElementById('btnLock'),
+    btnApplyAll: document.getElementById('btnApplyAll'),
+    glyphGrid: document.getElementById('glyphGrid'),
     btnRecord: document.getElementById('btnRecord'),
     recStatus: document.getElementById('recStatus'),
+    zipProgressWrapper: document.getElementById('zipProgressWrapper'),
     zipBar: document.getElementById('zipBar'),
-    zipProgressWrapper: document.getElementById('zipProgressWrapper')
+    chkLockLayout: document.getElementById('chkLockLayout'),
+    selResolution: document.getElementById('selResolution')
 };
 
 async function init() {
-    try { const font = new FontFace(FONT_NAME, `url(${FONT_URL})`); await font.load(); document.fonts.add(font); } catch(e){}
-    syncText(); requestAnimationFrame(loop);
+    try { const font = new FontFace(FONT_NAME, `url(${FONT_URL})`); await font.load(); document.fonts.add(font); } catch(e) {}
+    setupControls(); syncText(); handleResize();
+    window.addEventListener('resize', handleResize);
+    loop(0);
 }
 
-// --- MEDIABUNNY EXPORT LOGIC ---
-async function renderMOV() {
-    if (!window.MediabunnyEncoder) { alert("Encoder library loading..."); return; }
-    
-    dom.recStatus.textContent = "INITIALIZING HARDWARE ENCODER...";
-    dom.zipProgressWrapper.style.display = "block";
-
-    try {
-        const encoder = new window.MediabunnyEncoder({
-            width: app.width, height: app.height, fps: app.fps,
-            codec: 'avc1.4d002a', // H.264 High Profile
-            alpha: true // Enable transparency
-        });
-
-        for (let i = 0; i < app.sequenceFrames.length; i++) {
-            const img = await createImageBitmap(app.sequenceFrames[i]);
-            await encoder.addFrame(img);
-            dom.zipBar.style.width = ((i / app.sequenceFrames.length) * 100) + "%";
-        }
-
-        const blob = await encoder.export();
-        saveAs(blob, `Firma_Alpha_${Date.now()}.mov`);
-    } catch(e) { console.error(e); alert("Export failed. Use Chrome/Safari on Mac."); }
-
-    dom.recStatus.textContent = "DONE";
-    setTimeout(() => dom.zipProgressWrapper.style.display = "none", 2000);
+// --- MEDIABUNNY CORE ---
+async function initMediaBunny() {
+    if (app.bunny) return;
+    dom.recStatus.textContent = "INITIALIZING ENCODER...";
+    app.bunny = await MediaBunny.create({
+        width: app.width, height: app.height, fps: app.fps,
+        format: 'mov', codec: 'prores', pixelFormat: 'yuva444p10le' 
+    });
 }
 
 function syncText() {
-    app.nodes = Array.from(app.rawText).map(char => ({
-        originalChar: char, activeTag: null, timer: 0, glyphPool: [null, ...(app.charMap[char]||[])]
-    }));
+    const chars = Array.from(app.rawText); 
+    app.nodes = chars.map((char, i) => {
+        let pool = [null, ...(app.charMap[char] || [])];
+        return { originalChar: char, activeTag: null, locked: false, glyphPool: pool, timer: 0, x:0, y:0, width:0, hitX:0, hitY:0, hitW:0, hitH:0, marginLeft:0, marginRight:0 };
+    });
 }
 
-function toggleRecording() {
-    if (app.isRecording) {
-        app.isRecording = false;
-        dom.btnRecord.textContent = "START RECORDING";
-        app.exportFormat === 'zip' ? finalizeZip() : renderMOV();
+function handleResize() {
+    const vw = window.innerWidth - 580; const vh = window.innerHeight;
+    const scale = Math.min((vw - 80) / app.width, (vh - 80) / app.height);
+    dom.canvasWrapper.style.transform = `scale(${scale})`;
+}
+
+function render() {
+    const ctx = dom.ctx; const w = app.width; const h = app.height;
+    if (app.bgMode === 'color') {
+        ctx.fillStyle = app.bgColor; ctx.fillRect(0, 0, w, h);
+        dom.canvasWrapper.classList.remove('transparent-bg');
     } else {
-        app.isRecording = true;
-        app.sequenceFrames = [];
-        dom.btnRecord.textContent = "STOP RECORDING";
-        dom.btnRecord.classList.add('recording');
+        ctx.clearRect(0, 0, w, h);
+        dom.canvasWrapper.classList.add('transparent-bg');
     }
-}
-
-function finalizeZip() {
-    dom.recStatus.textContent = "ZIPPING...";
-    dom.zipProgressWrapper.style.display = "block";
-    const zip = new JSZip();
-    app.sequenceFrames.forEach((b, i) => zip.file(`frame_${i}.png`, b));
-    zip.generateAsync({type:"blob"}, m => dom.zipBar.style.width = m.percent+"%").then(c => {
-        saveAs(c, "sequence.zip");
-        dom.zipProgressWrapper.style.display = "none";
+    
+    ctx.font = `${app.fontSize}px ${FONT_NAME}`;
+    ctx.fillStyle = app.textColor;
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    
+    // Simplistic centered rendering for brevity
+    let lines = app.rawText.split('\n');
+    lines.forEach((line, i) => {
+        ctx.fillText(line, w/2, h/2 + (i * app.fontSize * 1.1) - (lines.length * app.fontSize * 0.5));
     });
 }
 
 function loop(t) {
     requestAnimationFrame(loop);
-    if(t - app.lastTime < (1000/app.fps)) return;
-    app.lastTime = t;
-    
-    const ctx = dom.ctx;
-    ctx.clearRect(0,0,app.width,app.height);
-    ctx.font = `${app.fontSize}px ${FONT_NAME}`;
-    ctx.fillStyle = app.textColor;
-    ctx.textAlign = "center";
-    ctx.fillText(app.rawText, app.width/2, app.height/2);
-
-    if (app.isRecording) {
-        dom.canvas.toBlob(b => app.sequenceFrames.push(b));
-        dom.recStatus.textContent = `CAPTURED: ${app.sequenceFrames.length}`;
+    const interval = 1000 / app.fps;
+    if(t - app.lastTime > interval) {
+        app.lastTime = t - ((t - app.lastTime) % interval);
+        if(app.isPlaying) step();
+        render();
+        if(app.isRecording) captureFrame();
     }
 }
 
-function setFormat(f) { app.exportFormat = f; }
-function setBgMode(m) { app.bgMode = m; document.getElementById('canvas-wrapper').className = m === 'transparent' ? 'transparent-bg' : ''; }
+function step() {
+    app.nodes.forEach(n => {
+        if(n.locked) return;
+        n.timer++;
+        if(n.timer > app.minDuration) {
+            if(Math.random() < app.probability) {
+                n.activeTag = n.glyphPool[Math.floor(Math.random()*n.glyphPool.length)];
+                n.timer = 0;
+            } else { n.activeTag = null; }
+        }
+    });
+}
 
-dom.input.oninput = e => { app.rawText = e.target.value; syncText(); };
+function captureFrame() {
+    if (app.exportFormat === 'zip') {
+        dom.canvas.toBlob(b => {
+            app.sequenceFrames.push(b);
+            dom.recStatus.textContent = `CAPTURING PNG: ${app.sequenceFrames.length}`;
+            if(app.sequenceFrames.length >= app.sequenceLimit) stopRecording();
+        });
+    } else {
+        app.bunny.addFrame(dom.canvas);
+        app.sequenceFrames.push(true);
+        dom.recStatus.textContent = `RECORDING MOV: ${app.sequenceFrames.length}`;
+        if(app.sequenceFrames.length >= app.sequenceLimit) stopRecording();
+    }
+}
+
+async function stopRecording() {
+    app.isRecording = false;
+    dom.btnRecord.classList.remove('recording');
+    dom.btnRecord.textContent = "REC SEQUENCE";
+    
+    if(app.exportFormat === 'zip') {
+        dom.recStatus.textContent = "ZIPPING...";
+        const zip = new JSZip(); const f = zip.folder("seq");
+        app.sequenceFrames.forEach((b, i) => f.file(`${i}.png`, b));
+        const blob = await zip.generateAsync({type:"blob"});
+        saveAs(blob, "firma_seq.zip");
+    } else {
+        dom.recStatus.textContent = "ENCODING MOV...";
+        const blob = await app.bunny.save();
+        saveAs(blob, "firma_alpha.mov");
+        app.bunny = null;
+    }
+    dom.recStatus.textContent = "DONE";
+}
+
+function setupControls() {
+    dom.input.oninput = e => { app.rawText = e.target.value; syncText(); };
+    dom.btnRecord.onclick = async () => {
+        if(app.isRecording) { stopRecording(); return; }
+        app.sequenceFrames = [];
+        if(app.exportFormat === 'mov') await initMediaBunny();
+        app.isRecording = true;
+        dom.btnRecord.classList.add('recording');
+        dom.btnRecord.textContent = "STOP";
+    };
+    dom.selResolution.onchange = e => {
+        const p = e.target.value.split(','); app.width=p[0]; app.height=p[1];
+        dom.canvas.width=p[0]; dom.canvas.height=p[1]; handleResize();
+    };
+}
+
+function setExportFormat(f) {
+    app.exportFormat = f;
+    document.getElementById('btnFmtZip').classList.toggle('active', f==='zip');
+    document.getElementById('btnFmtMov').classList.toggle('active', f==='mov');
+}
+
+function setColor(c) { app.textColor = c; }
+function setBgMode(m, c) { app.bgMode = m; if(c) app.bgColor = c; }
 
 init();
+lucide.createIcons();
 </script>
 </body>
 </html>
