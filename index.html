@@ -11,47 +11,64 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
     
-    <script src="https://unpkg.com/mediabunny@1.0.1/dist/index.bundle.min.js"></script>
-    
+    <script src="https://unpkg.com/@ffmpeg/ffmpeg@0.12.7/dist/umd/ffmpeg.js"></script>
+    <script src="https://unpkg.com/@ffmpeg/util@0.12.1/dist/umd/index.js"></script>
+    <script src="https://unpkg.com/@ffmpeg/core@0.12.6/dist/umd/ffmpeg-core.js"></script>
+
     <style>
-        /* Styles remain identical to your original professional theme */
         :root {
             --bg-app: #09090b; --bg-panel: #18181b; --bg-header: #27272a; --bg-input: #09090b;
-            --border: #3f3f46; --primary: #FF0054; --primary-hover: #ff3377; --accent: #FF3924;
-            --selection: #FF0054; --text-main: #e4e4e7; --text-muted: #a1a1aa;
+            --border: #3f3f46; --primary: #FF0054; --text-main: #e4e4e7; --text-muted: #a1a1aa;
             --font-ui: 'Inter', sans-serif; --font-mono: 'JetBrains Mono', monospace;
-            --radius-sm: 4px; --radius-md: 6px;
         }
         * { box-sizing: border-box; outline: none; user-select: none; }
-        body {
-            background: var(--bg-app); color: var(--text-main); font-family: var(--font-ui);
-            height: 100vh; overflow: hidden; display: grid;
-            grid-template-columns: 280px 1fr 300px; margin: 0; font-size: 12px;
-        }
-        /* ... All other CSS from your original provided file ... */
-        main { position: relative; background: #050505; display: flex; flex-direction: column; overflow: hidden; }
-        .viewport { flex: 1; display: flex; align-items: center; justify-content: center; background-image: radial-gradient(#333 1px, transparent 1px); background-size: 24px 24px; }
-        #canvas-wrapper { box-shadow: 0 20px 50px rgba(0,0,0,0.5); border: 1px solid #333; background: #000; }
+        body { background: var(--bg-app); color: var(--text-main); font-family: var(--font-ui); height: 100vh; overflow: hidden; display: grid; grid-template-columns: 280px 1fr 300px; margin: 0; font-size: 12px; }
+        
+        /* Layout & Panel Styles */
+        aside { background: var(--bg-panel); border-left: 1px solid var(--border); border-right: 1px solid var(--border); display: flex; flex-direction: column; z-index: 10; }
+        .panel-header { height: 48px; border-bottom: 1px solid var(--border); display: flex; align-items: center; padding: 0 16px; background: var(--bg-panel); font-weight: 700; color: #fff; }
+        .panel-content { padding: 20px; display: flex; flex-direction: column; gap: 20px; overflow-y: auto; }
+        .section-title { font-size: 11px; font-weight: 600; text-transform: uppercase; color: var(--text-muted); margin-bottom: 8px; display: flex; gap: 8px; align-items: center; }
+        
+        textarea { width: 100%; background: var(--bg-input); border: 1px solid var(--border); color: var(--text-main); padding: 12px; font-family: 'Firma', var(--font-mono); font-size: 24px; border-radius: 6px; resize: vertical; min-height: 80px; }
+        
+        /* Main Viewport */
+        main { position: relative; background: #050505; display: flex; align-items: center; justify-content: center; overflow: hidden; }
+        .viewport { flex: 1; display: flex; align-items: center; justify-content: center; background-image: radial-gradient(#333 1px, transparent 1px); background-size: 24px 24px; width: 100%; height: 100%; }
+        #canvas-wrapper { box-shadow: 0 20px 50px rgba(0,0,0,0.5); border: 1px solid #333; background: #000; transition: transform 0.2s; }
         #canvas-wrapper.transparent-bg {
             background-color: #333;
             background-image: linear-gradient(45deg, #444 25%, transparent 25%), linear-gradient(-45deg, #444 25%, transparent 25%);
             background-size: 20px 20px;
         }
-        /* Progress Bar Styles */
-        #zipProgressWrapper { width: 100%; height: 4px; background: #222; margin-top: 12px; display: none; border-radius: 2px; overflow: hidden;}
+
+        /* Controls */
+        .btn { width: 100%; height: 32px; cursor: pointer; background: var(--bg-header); border: 1px solid var(--border); color: var(--text-main); border-radius: 4px; display: flex; align-items: center; justify-content: center; gap: 8px; font-weight: 600; font-size: 11px; transition: 0.2s; }
+        .btn:hover { background: #333; }
+        .btn-rec.recording { background: #FF3924; color: white; border-color: #FF3924; animation: pulse 2s infinite; }
+        .btn-primary { background: var(--primary); border-color: var(--primary); color: white; }
+        
+        #recStatus { text-align: center; margin-top: 10px; font-family: var(--font-mono); font-size: 10px; color: var(--text-muted); min-height: 14px; }
+        #zipProgressWrapper { width: 100%; height: 4px; background: #222; margin-top: 8px; display: none; border-radius: 2px; }
         #zipBar { width: 0%; height: 100%; background: var(--primary); transition: width 0.1s; }
+        
+        @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.7; } 100% { opacity: 1; } }
     </style>
 </head>
 <body>
 
     <aside>
-        <div class="panel-header"><div class="brand">FIRMA<span>FONT</span></div></div>
+        <div class="panel-header">FIRMA FONT</div>
         <div class="panel-content">
-            <div class="section-group">
-                <div class="section-title"><i data-lucide="type"></i> Source Content</div>
-                <textarea id="inpText" spellcheck="false">FIRMA סטודיו</textarea>
+            <div>
+                <div class="section-title"><i data-lucide="type" width="14"></i> Source</div>
+                <textarea id="inpText">FIRMA סטודיו</textarea>
             </div>
+            <div>
+                 <div class="section-title"><i data-lucide="palette" width="14"></i> Background</div>
+                 <button class="btn" onclick="app.bgMode='transparent'; render()">Set Transparent</button>
             </div>
+        </div>
     </aside>
 
     <main>
@@ -62,35 +79,31 @@
         </div>
     </main>
 
-    <aside id="panel-letter-container">
-        <div id="panel-global">
-            <div class="panel-header">SCENE SETTINGS</div>
-            <div class="panel-content">
-                <button id="btnFmtMov" class="btn" onclick="setExportFormat('mov')">PREP PRORES MOV</button>
-                <button id="btnRecord" class="btn btn-rec" onclick="toggleRecording()">REC SEQUENCE</button>
-                <div id="recStatus" style="text-align:center; margin-top:12px; font-family:var(--font-mono);"></div>
+    <aside>
+        <div class="panel-header">EXPORT</div>
+        <div class="panel-content">
+            <div>
+                <div class="section-title"><i data-lucide="film" width="14"></i> Output</div>
+                <button class="btn" id="btnRec" onclick="toggleRecording()">
+                    <i data-lucide="video" width="14"></i> RECORD PRORES 4444
+                </button>
+                <div id="recStatus"></div>
                 <div id="zipProgressWrapper"><div id="zipBar"></div></div>
-            </div>
-        </div>
-
-        <div id="panel-letter" style="display:none;">
-            <div class="panel-header" style="background:var(--primary);">CHARACTER INSPECTOR</div>
-            <div class="panel-content">
-                <button id="btnApplyAll" class="btn btn-primary">Apply to all instances</button>
-                <div id="glyphGrid" class="glyph-picker"></div>
             </div>
         </div>
     </aside>
 
 <script>
-const FONT_NAME = 'Firma';
+const FONT_NAME = 'Firma'; // Ensure Firma.otf is in your folder
 const app = {
-    rawText: "FIRMA סטודיו",
-    fps: 24, exportFormat: 'zip', sequenceFrames: [], 
-    isRecording: false, bunny: null, ffmpegLoaded: false,
-    nodes: [], lastTime: 0, selectionIndex: -1,
-    charSettings: {}, 
-    charMap: { 'A': ['ss01', 'ss02'], 'F': ['ss01', 'ss03'] } // Your full map here
+    fps: 24, 
+    sequenceFrames: [], 
+    isRecording: false, 
+    ffmpeg: null, 
+    ffmpegLoaded: false,
+    width: 1920, height: 1080,
+    lastTime: 0,
+    bgMode: 'transparent'
 };
 
 const dom = {
@@ -98,100 +111,140 @@ const dom = {
     ctx: document.getElementById('exportCanvas').getContext('2d'),
     recStatus: document.getElementById('recStatus'),
     zipBar: document.getElementById('zipBar'),
-    zipProgressWrapper: document.getElementById('zipProgressWrapper'),
-    btnApplyAll: document.getElementById('btnApplyAll')
+    zipProgress: document.getElementById('zipProgressWrapper'),
+    inpText: document.getElementById('inpText')
 };
 
-/* --- EXPORT ENGINE --- */
-
-async function initFFmpeg() {
-    if (app.bunny) return;
-    dom.recStatus.textContent = "INITIALIZING ENGINE...";
+// --- FFmpeg Logic (Standard v0.12 API) ---
+async function loadFFmpeg() {
+    if (app.ffmpegLoaded) return;
+    dom.recStatus.textContent = "LOADING FFMPEG CORE...";
+    
     try {
-        // Now works because the script 404 is fixed
-        app.bunny = new MediaBunny();
-        await app.bunny.init();
+        const { FFmpeg } = FFmpegWASM;
+        const { fetchFile, toBlobURL } = FFmpegUtil;
+        
+        app.ffmpeg = new FFmpeg();
+        
+        // Load libraries from unpkg
+        const baseURL = 'https://unpkg.com/@ffmpeg/core@0.12.6/dist/umd';
+        await app.ffmpeg.load({
+            coreURL: await toBlobURL(`${baseURL}/ffmpeg-core.js`, 'text/javascript'),
+            wasmURL: await toBlobURL(`${baseURL}/ffmpeg-core.wasm`, 'application/wasm'),
+        });
+        
         app.ffmpegLoaded = true;
         dom.recStatus.textContent = "ENGINE READY";
-    } catch (err) {
-        console.error("MediaBunny failed to init. crossOriginIsolated is: ", crossOriginIsolated);
-        dom.recStatus.textContent = "ENGINE INIT FAILED";
+        console.log("FFmpeg Loaded with SharedArrayBuffer support!");
+    } catch (e) {
+        console.error(e);
+        dom.recStatus.textContent = "LOAD FAILED: " + e.message;
     }
 }
 
-async function renderProRes() {
-    if (!app.ffmpegLoaded) await initFFmpeg();
-    dom.recStatus.textContent = "ENCODING PRORES 4444...";
-    dom.zipProgressWrapper.style.display = "block";
-    try {
-        // High-quality ProRes 4444 with true Alpha support
-        const videoBlob = await app.bunny.export(app.sequenceFrames, {
-            format: 'mov', fps: app.fps,
-            args: ['-c:v', 'prores_ks', '-profile:v', '44', '-pix_fmt', 'yuva444p10le']
-        });
-        dom.zipBar.style.width = "100%";
-        saveAs(videoBlob, `Firma_ProRes_Alpha_${Date.now()}.mov`);
-        dom.recStatus.textContent = "DONE";
-    } catch (err) {
-        console.error(err);
-        dom.recStatus.textContent = "ENCODING ERROR";
-    }
-    setTimeout(() => { dom.zipProgressWrapper.style.display = "none"; dom.recStatus.textContent = ""; }, 3000);
-}
-
-/* --- APPLY TO ALL LOGIC --- */
-
-dom.btnApplyAll.onclick = () => {
-    if (app.selectionIndex === -1) return;
-    const sourceNode = app.nodes[app.selectionIndex];
-    const targetChar = sourceNode.originalChar;
+async function exportProRes() {
+    if (!app.ffmpegLoaded) await loadFFmpeg();
     
-    // Save settings to the global map
-    app.charSettings[targetChar] = [...sourceNode.glyphPool];
+    dom.recStatus.textContent = "WRITING FRAMES...";
+    dom.zipProgress.style.display = 'block';
+    
+    const { fetchFile } = FFmpegUtil;
+    
+    // 1. Write frames to virtual FS
+    for (let i = 0; i < app.sequenceFrames.length; i++) {
+        const fname = `frame${String(i).padStart(4, '0')}.png`;
+        await app.ffmpeg.writeFile(fname, await fetchFile(app.sequenceFrames[i]));
+        dom.zipBar.style.width = `${(i/app.sequenceFrames.length)*50}%`;
+    }
+    
+    dom.recStatus.textContent = "ENCODING PRORES 4444...";
+    
+    // 2. Run FFmpeg Command for ProRes 4444 (Alpha safe)
+    await app.ffmpeg.exec([
+        '-framerate', String(app.fps),
+        '-pattern_type', 'glob', '-i', '*.png',
+        '-c:v', 'prores_ks', 
+        '-profile:v', '4444', 
+        '-pix_fmt', 'yuva444p10le', // 10-bit Alpha
+        '-vendor', 'apl0',
+        '-y',
+        'output.mov'
+    ]);
+    
+    dom.zipBar.style.width = '100%';
+    
+    // 3. Retrieve and Save
+    const data = await app.ffmpeg.readFile('output.mov');
+    const blob = new Blob([data.buffer], { type: 'video/quicktime' });
+    saveAs(blob, `Firma_ProRes_Alpha_${Date.now()}.mov`);
+    
+    // Cleanup
+    for (let i = 0; i < app.sequenceFrames.length; i++) {
+        const fname = `frame${String(i).padStart(4, '0')}.png`;
+        await app.ffmpeg.deleteFile(fname);
+    }
+    await app.ffmpeg.deleteFile('output.mov');
+    
+    dom.recStatus.textContent = "DONE";
+    setTimeout(() => { dom.zipProgress.style.display = 'none'; dom.zipBar.style.width = '0%'; }, 2000);
+}
 
-    // Sync all matching letters in the current string
-    app.nodes.forEach(n => {
-        if (n.originalChar === targetChar) {
-            n.glyphPool = [...sourceNode.glyphPool];
-            if (!n.glyphPool.includes(n.activeTag)) {
-                n.activeTag = n.glyphPool[0];
-                n.timer = 0;
-            }
-        }
-    });
-    console.log(`Synced settings for all "${targetChar}" instances.`);
-};
-
-/* --- CORE APP LOGIC --- */
-
+// --- App Loop ---
 function toggleRecording() {
-    if(app.isRecording) {
+    if (app.isRecording) {
         app.isRecording = false;
-        if (app.exportFormat === 'zip') finalizeZip(); else renderProRes();
+        document.getElementById('btnRec').classList.remove('recording');
+        document.getElementById('btnRec').innerHTML = `<i data-lucide="video" width="14"></i> RECORD PRORES 4444`;
+        exportProRes();
     } else {
+        if (!crossOriginIsolated) {
+            alert("Security headers missing! Service Worker not running.");
+            return;
+        }
         app.sequenceFrames = [];
         app.isRecording = true;
+        document.getElementById('btnRec').classList.add('recording');
+        document.getElementById('btnRec').innerHTML = `<i data-lucide="square" width="14"></i> STOP RECORDING`;
         dom.recStatus.textContent = "CAPTURING...";
+        loadFFmpeg(); // Preload while recording
     }
 }
 
 function loop(t) {
     requestAnimationFrame(loop);
-    if(t - app.lastTime > 1000/app.fps) {
-        app.lastTime = t;
-        // ... step() and render() logic ...
-        if(app.isRecording) {
-            dom.canvas.toBlob(b => { 
-                app.sequenceFrames.push(b); 
-                dom.recStatus.textContent = `FRAMES: ${app.sequenceFrames.length}`;
-            }, 'image/png');
-        }
+    
+    if (t - app.lastTime < 1000 / app.fps) return;
+    app.lastTime = t;
+    
+    render();
+    
+    if (app.isRecording) {
+        dom.canvas.toBlob(blob => {
+            app.sequenceFrames.push(blob);
+            dom.recStatus.textContent = `FRAMES: ${app.sequenceFrames.length}`;
+        }, 'image/png');
     }
 }
 
-function setExportFormat(fmt) { app.exportFormat = fmt; if(fmt === 'mov') initFFmpeg(); }
+function render() {
+    dom.ctx.clearRect(0, 0, app.width, app.height);
+    
+    // Checkerboard for transparency reference
+    if (app.bgMode === 'transparent') {
+        // Draw nothing (true alpha)
+    } else {
+        dom.ctx.fillStyle = "#000";
+        dom.ctx.fillRect(0,0, app.width, app.height);
+    }
+    
+    dom.ctx.fillStyle = "#FF0054";
+    dom.ctx.font = "bold 150px Arial";
+    dom.ctx.textAlign = "center";
+    dom.ctx.textBaseline = "middle";
+    dom.ctx.fillText(dom.inpText.value, app.width/2, app.height/2);
+}
 
-// ... Rest of your original initialization code ...
+// Start
 lucide.createIcons();
 loop(0);
 </script>
