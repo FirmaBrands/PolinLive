@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Firma3 Font | Polin Live</title>
+    <title>Firma Font | Polin Live</title>
 
     <script src="coi-serviceworker.min.js"></script>
 
@@ -1597,7 +1597,10 @@
                     '-framerate', String(fps),
                     '-pattern_type', 'glob', '-i', '*.png',
                     '-c:v', 'qtrle',  // QuickTime Animation (Lossless + Alpha)
-                    '-vf', `scale=${app.width}:${app.height},setsar=1`,
+                    '-s', `${app.width}x${app.height}`,
+                    '-aspect', `${app.width}:${app.height}`,
+                    '-vf', 'setsar=1',
+                    '-pix_fmt', 'argb',
                     '-y',
                     'output.mov'
                 );
