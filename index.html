@@ -1306,7 +1306,15 @@ function step() {
             if (node.activeTag !== null) {
                 const overLimit = glitchedNodes.length > app.maxConcurrent;
                 if (overLimit || roll > 0.3) {
-                    node.activeTag = null;
+                    
+                    // FIXED: Only revert to Base (null) if Base is actually allowed in the pool.
+                    // Otherwise, pick another random allowed alternate.
+                    if (pool.includes(null)) {
+                        node.activeTag = null; 
+                    } else {
+                        node.activeTag = pool[Math.floor(Math.random() * pool.length)];
+                    }
+                    
                     node.timer = 0;
                     glitchedNodes = glitchedNodes.filter(n => n !== node);
                 } else {
