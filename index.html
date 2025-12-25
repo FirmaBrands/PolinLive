@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Firma 33Font | Polin Live</title>
+    <title>Firma Font | Polin Live</title>
     
     <script src="coi-serviceworker.min.js"></script>
     
@@ -11,9 +11,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
     
-    <script src="https://unpkg.com/@ffmpeg/ffmpeg@0.12.7/dist/umd/ffmpeg.js"></script>
-    <script src="https://unpkg.com/@ffmpeg/util@0.12.1/dist/umd/index.js"></script>
-    <script src="https://unpkg.com/@ffmpeg/core@0.12.6/dist/umd/ffmpeg-core.js"></script>
+    <script src="https://unpkg.com/@ffmpeg/ffmpeg@0.11.6/dist/ffmpeg.min.js"></script>
 
     <style>
         :root {
@@ -24,7 +22,7 @@
         * { box-sizing: border-box; outline: none; user-select: none; }
         body { background: var(--bg-app); color: var(--text-main); font-family: var(--font-ui); height: 100vh; overflow: hidden; display: grid; grid-template-columns: 280px 1fr 300px; margin: 0; font-size: 12px; }
         
-        /* Layout & Panel Styles */
+        /* Layout */
         aside { background: var(--bg-panel); border-left: 1px solid var(--border); border-right: 1px solid var(--border); display: flex; flex-direction: column; z-index: 10; }
         .panel-header { height: 48px; border-bottom: 1px solid var(--border); display: flex; align-items: center; padding: 0 16px; background: var(--bg-panel); font-weight: 700; color: #fff; }
         .panel-content { padding: 20px; display: flex; flex-direction: column; gap: 20px; overflow-y: auto; }
@@ -32,23 +30,20 @@
         
         textarea { width: 100%; background: var(--bg-input); border: 1px solid var(--border); color: var(--text-main); padding: 12px; font-family: 'Firma', var(--font-mono); font-size: 24px; border-radius: 6px; resize: vertical; min-height: 80px; }
         
-        /* Main Viewport */
         main { position: relative; background: #050505; display: flex; align-items: center; justify-content: center; overflow: hidden; }
         .viewport { flex: 1; display: flex; align-items: center; justify-content: center; background-image: radial-gradient(#333 1px, transparent 1px); background-size: 24px 24px; width: 100%; height: 100%; }
-        #canvas-wrapper { box-shadow: 0 20px 50px rgba(0,0,0,0.5); border: 1px solid #333; background: #000; transition: transform 0.2s; }
+        #canvas-wrapper { box-shadow: 0 20px 50px rgba(0,0,0,0.5); border: 1px solid #333; background: #000; }
         #canvas-wrapper.transparent-bg {
             background-color: #333;
             background-image: linear-gradient(45deg, #444 25%, transparent 25%), linear-gradient(-45deg, #444 25%, transparent 25%);
             background-size: 20px 20px;
         }
 
-        /* Controls */
         .btn { width: 100%; height: 32px; cursor: pointer; background: var(--bg-header); border: 1px solid var(--border); color: var(--text-main); border-radius: 4px; display: flex; align-items: center; justify-content: center; gap: 8px; font-weight: 600; font-size: 11px; transition: 0.2s; }
         .btn:hover { background: #333; }
         .btn-rec.recording { background: #FF3924; color: white; border-color: #FF3924; animation: pulse 2s infinite; }
-        .btn-primary { background: var(--primary); border-color: var(--primary); color: white; }
         
-        #recStatus { text-align: center; margin-top: 10px; font-family: var(--font-mono); font-size: 10px; color: var(--text-muted); min-height: 14px; }
+        #recStatus { text-align: center; margin-top: 10px; font-family: var(--font-mono); font-size: 10px; color: var(--text-muted); min-height: 14px; white-space: pre-wrap; }
         #zipProgressWrapper { width: 100%; height: 4px; background: #222; margin-top: 8px; display: none; border-radius: 2px; }
         #zipBar { width: 0%; height: 100%; background: var(--primary); transition: width 0.1s; }
         
@@ -94,13 +89,12 @@
     </aside>
 
 <script>
-const FONT_NAME = 'Firma'; // Ensure Firma.otf is in your folder
+const FONT_NAME = 'Firma'; 
 const app = {
     fps: 24, 
     sequenceFrames: [], 
     isRecording: false, 
     ffmpeg: null, 
-    ffmpegLoaded: false,
     width: 1920, height: 1080,
     lastTime: 0,
     bgMode: 'transparent'
@@ -115,81 +109,90 @@ const dom = {
     inpText: document.getElementById('inpText')
 };
 
-// --- FFmpeg Logic (Standard v0.12 API) ---
+// --- FFmpeg v0.11.6 Logic ---
 async function loadFFmpeg() {
-    if (app.ffmpegLoaded) return;
-    dom.recStatus.textContent = "LOADING FFMPEG CORE...";
+    if (app.ffmpeg && app.ffmpeg.isLoaded()) return;
+    
+    dom.recStatus.textContent = "LOADING ENGINE...";
     
     try {
-        const { FFmpeg } = FFmpegWASM;
-        const { fetchFile, toBlobURL } = FFmpegUtil;
+        const { createFFmpeg } = FFmpeg;
         
-        app.ffmpeg = new FFmpeg();
-        
-        // Load libraries from unpkg
-        const baseURL = 'https://unpkg.com/@ffmpeg/core@0.12.6/dist/umd';
-        await app.ffmpeg.load({
-            coreURL: await toBlobURL(`${baseURL}/ffmpeg-core.js`, 'text/javascript'),
-            wasmURL: await toBlobURL(`${baseURL}/ffmpeg-core.wasm`, 'application/wasm'),
+        // We create the engine pointing to the core 0.11.0
+        // Because you have coi-serviceworker, this will work!
+        app.ffmpeg = createFFmpeg({ 
+            log: true,
+            corePath: 'https://unpkg.com/@ffmpeg/core@0.11.0/dist/ffmpeg-core.js'
         });
         
-        app.ffmpegLoaded = true;
+        await app.ffmpeg.load();
+        
         dom.recStatus.textContent = "ENGINE READY";
-        console.log("FFmpeg Loaded with SharedArrayBuffer support!");
+        console.log("FFmpeg 0.11 Loaded successfully!");
     } catch (e) {
         console.error(e);
-        dom.recStatus.textContent = "LOAD FAILED: " + e.message;
+        dom.recStatus.textContent = "LOAD FAILED. Check Console.";
     }
 }
 
 async function exportProRes() {
-    if (!app.ffmpegLoaded) await loadFFmpeg();
+    if (!app.ffmpeg || !app.ffmpeg.isLoaded()) await loadFFmpeg();
     
-    dom.recStatus.textContent = "WRITING FRAMES...";
+    dom.recStatus.textContent = "WRITING FILES...";
     dom.zipProgress.style.display = 'block';
     
-    const { fetchFile } = FFmpegUtil;
+    const { fetchFile } = FFmpeg; // Helper from library
     
-    // 1. Write frames to virtual FS
+    // 1. Write frames to virtual FS (v0.11 Syntax)
     for (let i = 0; i < app.sequenceFrames.length; i++) {
         const fname = `frame${String(i).padStart(4, '0')}.png`;
-        await app.ffmpeg.writeFile(fname, await fetchFile(app.sequenceFrames[i]));
-        dom.zipBar.style.width = `${(i/app.sequenceFrames.length)*50}%`;
+        const blob = app.sequenceFrames[i];
+        app.ffmpeg.FS('writeFile', fname, await fetchFile(blob));
+        
+        // Update bar
+        dom.zipBar.style.width = `${(i/app.sequenceFrames.length)*40}%`;
     }
     
     dom.recStatus.textContent = "ENCODING PRORES 4444...";
     
-    // 2. Run FFmpeg Command for ProRes 4444 (Alpha safe)
-    await app.ffmpeg.exec([
-        '-framerate', String(app.fps),
-        '-pattern_type', 'glob', '-i', '*.png',
-        '-c:v', 'prores_ks', 
-        '-profile:v', '4444', 
-        '-pix_fmt', 'yuva444p10le', // 10-bit Alpha
-        '-vendor', 'apl0',
-        '-y',
-        'output.mov'
-    ]);
+    // 2. Run FFmpeg Command
+    try {
+        await app.ffmpeg.run(
+            '-framerate', String(app.fps),
+            '-pattern_type', 'glob', '-i', '*.png',
+            '-c:v', 'prores_ks', 
+            '-profile:v', '4444', 
+            '-pix_fmt', 'yuva444p10le', // Alpha Channel Magic
+            '-vendor', 'apl0',
+            '-y',
+            'output.mov'
+        );
+    } catch(err) {
+        console.error("Encoding error:", err);
+        dom.recStatus.textContent = "ENCODING FAILED";
+        return;
+    }
     
     dom.zipBar.style.width = '100%';
     
-    // 3. Retrieve and Save
-    const data = await app.ffmpeg.readFile('output.mov');
-    const blob = new Blob([data.buffer], { type: 'video/quicktime' });
-    saveAs(blob, `Firma_ProRes_Alpha_${Date.now()}.mov`);
+    // 3. Download
+    const data = app.ffmpeg.FS('readFile', 'output.mov');
+    const videoBlob = new Blob([data.buffer], { type: 'video/quicktime' });
+    saveAs(videoBlob, `Firma_ProRes_Alpha_${Date.now()}.mov`);
     
     // Cleanup
-    for (let i = 0; i < app.sequenceFrames.length; i++) {
-        const fname = `frame${String(i).padStart(4, '0')}.png`;
-        await app.ffmpeg.deleteFile(fname);
-    }
-    await app.ffmpeg.deleteFile('output.mov');
+    try {
+        app.ffmpeg.FS('unlink', 'output.mov');
+        for (let i = 0; i < app.sequenceFrames.length; i++) {
+             app.ffmpeg.FS('unlink', `frame${String(i).padStart(4, '0')}.png`);
+        }
+    } catch(e) {}
     
     dom.recStatus.textContent = "DONE";
     setTimeout(() => { dom.zipProgress.style.display = 'none'; dom.zipBar.style.width = '0%'; }, 2000);
 }
 
-// --- App Loop ---
+// --- Application Loop ---
 function toggleRecording() {
     if (app.isRecording) {
         app.isRecording = false;
@@ -198,7 +201,7 @@ function toggleRecording() {
         exportProRes();
     } else {
         if (!crossOriginIsolated) {
-            alert("Security headers missing! Service Worker not running.");
+            alert("Security headers missing! Ensure coi-serviceworker is running.");
             return;
         }
         app.sequenceFrames = [];
@@ -206,7 +209,7 @@ function toggleRecording() {
         document.getElementById('btnRec').classList.add('recording');
         document.getElementById('btnRec').innerHTML = `<i data-lucide="square" width="14"></i> STOP RECORDING`;
         dom.recStatus.textContent = "CAPTURING...";
-        loadFFmpeg(); // Preload while recording
+        loadFFmpeg(); // Preload engine while recording
     }
 }
 
@@ -230,9 +233,7 @@ function render() {
     dom.ctx.clearRect(0, 0, app.width, app.height);
     
     // Checkerboard for transparency reference
-    if (app.bgMode === 'transparent') {
-        // Draw nothing (true alpha)
-    } else {
+    if (app.bgMode !== 'transparent') {
         dom.ctx.fillStyle = "#000";
         dom.ctx.fillRect(0,0, app.width, app.height);
     }
@@ -244,7 +245,6 @@ function render() {
     dom.ctx.fillText(dom.inpText.value, app.width/2, app.height/2);
 }
 
-// Start
 lucide.createIcons();
 loop(0);
 </script>
