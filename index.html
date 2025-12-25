@@ -9,1507 +9,237 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
     
-    <script src="https://unpkg.com/@ffmpeg/ffmpeg@0.11.6/dist/ffmpeg.min.js"></script>
+    <script type="module">
+        import { VideoEncoder } from "https://cdn.jsdelivr.net/npm/mediabunny@latest/dist/index.js";
+        window.MediabunnyEncoder = VideoEncoder;
+    </script>
     
     <style>
         :root {
-            /* --- THEME: FIRMA PRO --- */
             --bg-app: #09090b;       
             --bg-panel: #18181b;     
             --bg-header: #27272a;    
             --bg-input: #09090b;     
             --bg-input-hover: #27272a;
-            
             --border: #3f3f46;
-            
-            /* BRAND COLORS */
-            --primary: #FF0054;      /* Firma Pink */
+            --primary: #FF0054;      
             --primary-hover: #ff3377;
-            --accent: #FF3924;       /* Orange Red (Warn) */
+            --accent: #FF3924;       
             --selection: #FF0054;    
-            
             --text-main: #e4e4e7;
             --text-muted: #a1a1aa;
-            
-            /* SYSTEM FONTS FOR UI */
-            --font-ui: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-            --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
-            
+            --font-ui: 'Inter', -apple-system, sans-serif;
+            --font-mono: 'JetBrains Mono', monospace;
             --radius-sm: 4px;
             --radius-md: 6px;
         }
 
-        /* --- RESET --- */
         * { box-sizing: border-box; outline: none; user-select: none; }
-        
         body {
-            background: var(--bg-app);
-            color: var(--text-main);
-            font-family: var(--font-ui);
-            height: 100vh;
-            overflow: hidden;
-            display: grid;
-            grid-template-columns: 280px 1fr 300px; 
-            margin: 0;
-            font-size: 12px;
-            font-weight: 400;
+            background: var(--bg-app); color: var(--text-main); font-family: var(--font-ui);
+            height: 100vh; overflow: hidden; display: grid; grid-template-columns: 280px 1fr 300px; margin: 0; font-size: 12px;
         }
 
-        /* --- SCROLLBARS --- */
-        ::-webkit-scrollbar { width: 6px; }
-        ::-webkit-scrollbar-track { background: transparent; }
-        ::-webkit-scrollbar-thumb { background: #3f3f46; border-radius: 3px; }
-        ::-webkit-scrollbar-thumb:hover { background: #52525b; }
+        /* --- UI COMPONENTS --- */
+        aside { background: var(--bg-panel); border-right: 1px solid var(--border); border-left: 1px solid var(--border); display: flex; flex-direction: column; overflow-y: auto; z-index: 10; }
+        .panel-header { padding: 0 16px; height: 48px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; background: var(--bg-panel); }
+        .brand { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 13px; color: #fff; }
+        .brand-logo-container { width: 24px; height: 24px; background: #000; border-radius: 6px; display: flex; align-items: center; justify-content: center; }
+        .brand-logo-container svg { width: 14px; fill: #fff; }
+        .panel-content { padding: 20px; display: flex; flex-direction: column; gap: 24px; }
+        .section-title { font-size: 11px; font-weight: 600; text-transform: uppercase; color: var(--text-muted); display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
 
-        /* --- ICONS --- */
-        .icon { width: 14px; height: 14px; stroke-width: 2px; }
-        .icon-sm { width: 12px; height: 12px; stroke-width: 2px; }
-        .icon-lg { width: 18px; height: 18px; stroke-width: 2px; }
-
-        /* --- PANELS --- */
-        aside {
-            background: var(--bg-panel);
-            border-right: 1px solid var(--border);
-            border-left: 1px solid var(--border);
-            display: flex; flex-direction: column; overflow-y: auto; z-index: 10;
-        }
-
-        .panel-header {
-            padding: 0 16px; height: 48px;
-            border-bottom: 1px solid var(--border);
-            background: var(--bg-panel);
-            display: flex; align-items: center; justify-content: space-between;
-            flex-shrink: 0;
-            position: sticky; top: 0; z-index: 20;
-        }
-
-        .brand { 
-            display: flex; align-items: center; gap: 10px;
-            font-weight: 700; font-size: 13px; color: #fff; letter-spacing: 0.02em; 
-        }
-        .brand span { opacity: 0.5; font-weight: 400; }
+        textarea { width: 100%; background: var(--bg-input); border: 1px solid var(--border); color: #fff; padding: 12px; font-size: 16px; border-radius: var(--radius-md); resize: vertical; min-height: 80px; }
+        .control-row { display: grid; grid-template-columns: 80px 1fr 45px; align-items: center; gap: 10px; min-height: 28px; }
+        .num-input { width: 100%; background: transparent; border: 1px solid transparent; color: #fff; font-family: var(--font-mono); font-size: 11px; text-align: right; }
         
-        .brand-logo-container {
-            width: 24px; height: 24px;
-            background: #000000;
-            border-radius: 6px; 
-            display: flex; align-items: center; justify-content: center;
-        }
-        .brand-logo-container svg { width: 14px; height: auto; display: block; }
-        .brand-logo-container svg polygon { fill: #ffffff; }
+        .color-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+        .swatch { aspect-ratio: 1.4; border-radius: 4px; cursor: pointer; border: 1px solid rgba(255,255,255,0.1); }
+        .swatch.active { border-color: #fff; box-shadow: 0 0 0 2px var(--primary); }
+        .swatch-wide { width: 100%; height: 32px; border-radius: 4px; cursor: pointer; border: 1px solid #444; display: flex; align-items: center; justify-content: center; background: #1a1a1a; margin-bottom: 8px; font-weight: 700; font-size: 10px; }
+        .swatch-wide.active { border-color: var(--primary); color: var(--primary); }
 
-        .panel-content { padding: 20px; display: flex; flex-direction: column; gap: 28px; }
+        .btn { width: 100%; height: 32px; font-size: 11px; font-weight: 600; border-radius: var(--radius-sm); cursor: pointer; background: var(--bg-header); border: 1px solid var(--border); color: #fff; display: flex; align-items: center; justify-content: center; gap: 8px; }
+        .btn-primary { background: var(--primary); border: none; }
+        .btn-rec.recording { background: var(--accent); animation: pulse 2s infinite; }
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.7; } }
 
-        .section-group { display: flex; flex-direction: column; gap: 12px; }
-        
-        .section-title {
-            font-size: 11px; font-weight: 600; text-transform: uppercase;
-            letter-spacing: 0.05em; color: var(--text-muted); 
-            display: flex; align-items: center; gap: 8px;
-            margin-bottom: 4px;
-        }
-        
-        /* --- INPUTS --- */
-        textarea {
-            width: 100%; background: var(--bg-input); border: 1px solid var(--border);
-            color: var(--text-main); padding: 12px; 
-            font-family: 'Firma', var(--font-mono); font-size: 16px; line-height: 1.5;
-            border-radius: var(--radius-md); resize: vertical; min-height: 80px;
-            transition: border 0.2s;
-        }
-        textarea:focus { border-color: var(--primary); }
+        .seg-control { background: var(--bg-input); border: 1px solid var(--border); border-radius: 4px; display: flex; padding: 2px; }
+        .seg-btn { flex: 1; border: none; background: transparent; color: var(--text-muted); font-size: 9px; font-weight: 700; padding: 6px; cursor: pointer; border-radius: 2px; }
+        .seg-btn.active { background: var(--bg-panel); color: #fff; }
 
-        .control-row {
-            display: grid; grid-template-columns: 90px 1fr 50px; 
-            align-items: center; gap: 10px; min-height: 28px;
-        }
-        
-        .control-label { 
-            color: var(--text-muted); font-size: 11px; font-weight: 500;
-            display: flex; align-items: center; gap: 6px;
-        }
+        main { flex: 1; background: #050505; display: flex; align-items: center; justify-content: center; overflow: hidden; }
+        #canvas-wrapper { border: 1px solid #333; box-shadow: 0 20px 50px rgba(0,0,0,0.5); }
+        #canvas-wrapper.transparent-bg { background-image: linear-gradient(45deg, #222 25%, transparent 25%), linear-gradient(-45deg, #222 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #222 75%), linear-gradient(-45deg, transparent 75%, #222 75%); background-size: 20px 20px; }
 
-        input[type="range"] {
-            -webkit-appearance: none; width: 100%; height: 18px;
-            background: transparent; cursor: ew-resize;
-        }
-        input[type="range"]::-webkit-slider-runnable-track {
-            height: 4px; background: #333; border-radius: 2px;
-        }
-        input[type="range"]::-webkit-slider-thumb {
-            -webkit-appearance: none; width: 12px; height: 12px; margin-top: -4px;
-            background: #888; border-radius: 50%; border: 2px solid var(--bg-panel);
-            transition: 0.1s; box-shadow: 0 1px 3px rgba(0,0,0,0.3);
-        }
-        input[type="range"]:hover::-webkit-slider-thumb { background: var(--text-main); transform: scale(1.1); }
-        input[type="range"]:active::-webkit-slider-thumb { background: var(--primary); }
-
-        .num-input {
-            width: 100%; background: transparent; border: 1px solid transparent;
-            color: #ffffff;
-            font-family: var(--font-mono); font-size: 11px;
-            padding: 4px; border-radius: var(--radius-sm); text-align: right; 
-            transition: 0.2s;
-        }
-        .num-input:hover { background: var(--bg-input); border-color: var(--border); }
-        .num-input:focus { background: var(--bg-input); border-color: var(--primary); }
-
-        input[type=number]::-webkit-inner-spin-button, 
-        input[type=number]::-webkit-outer-spin-button { 
-            -webkit-appearance: none; margin: 0; 
-        }
-        input[type=number] { -moz-appearance: textfield; }
-
-        select {
-            appearance: none;
-            width: 100%; padding: 8px 12px; 
-            background: var(--bg-input); border: 1px solid var(--border);
-            color: white; border-radius: var(--radius-sm);
-            font-size: 11px; font-family: var(--font-ui);
-            cursor: pointer;
-        }
-        select:hover { border-color: var(--text-muted); }
-
-        /* --- COLOR GRID --- */
-        .color-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
-        
-        .swatch {
-            aspect-ratio: 1.4; border-radius: 6px; 
-            cursor: pointer; position: relative;
-            border: 1px solid rgba(255,255,255,0.1);
-            transition: transform 0.2s ease, border-color 0.2s, box-shadow 0.2s;
-            display: flex; align-items: center; justify-content: center;
-        }
-        .swatch:hover:not(.disabled) { transform: translateY(-2px); border-color: rgba(255,255,255,0.5); z-index: 2; }
-        
-        .swatch.active { 
-            border-color: rgba(255,255,255,0.8);
-            box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.15);
-            z-index: 5;
-            transform: scale(1.05);
-        }
-
-        .swatch.custom { background: conic-gradient(from 180deg, red, yellow, lime, aqua, blue, magenta, red); }
-        .swatch input { position: absolute; opacity: 0; width: 100%; height: 100%; cursor: pointer; }
-        
-        .swatch.transparent {
-            background-image: linear-gradient(45deg, #555 25%, transparent 25%), 
-                              linear-gradient(-45deg, #555 25%, transparent 25%), 
-                              linear-gradient(45deg, transparent 75%, #555 75%), 
-                              linear-gradient(-45deg, transparent 75%, #555 75%);
-            background-size: 8px 8px;
-            background-color: #222;
-        }
-
-        /* --- WIDE TRANSPARENT SWATCH --- */
-        .swatch-wide {
-            width: 100%; height: 36px; border-radius: 6px; 
-            cursor: pointer; position: relative;
-            border: 1px solid rgba(255,255,255,0.1);
-            transition: all 0.2s;
-            margin-bottom: 8px;
-            display: flex; flex-direction: column; align-items: center; justify-content: center;
-            background-color: #1a1a1a;
-            background-image: 
-                linear-gradient(45deg, #333 25%, transparent 25%), 
-                linear-gradient(-45deg, #333 25%, transparent 25%), 
-                linear-gradient(45deg, transparent 75%, #333 75%), 
-                linear-gradient(-45deg, transparent 75%, #333 75%);
-            background-size: 8px 8px;
-        }
-        .swatch-wide:hover { border-color: rgba(255,255,255,0.5); }
-        
-        .swatch-wide.active {
-            border-color: rgba(255,255,255,0.8);
-            box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.15);
-            z-index: 5;
-        }
-
-        .swatch-wide-label {
-            font-size: 11px; font-weight: 700; color: white;
-            text-shadow: 0 1px 4px rgba(0,0,0,0.8);
-        }
-
-        .swatch-wide.disabled {
-            cursor: not-allowed; opacity: 1.0;
-        }
-        .swatch-wide.disabled::before {
-            content: ''; position: absolute; inset: 0;
-            background: rgba(0,0,0,0.6); border-radius: 5px;
-        }
-        .mp4-warning-inline {
-            display: none;
-            font-size: 9px; color: #ef4444; font-weight: 700;
-            margin-top: 2px;
-            align-items: center; gap: 4px;
-            z-index: 2; text-shadow: 0 1px 2px rgba(0,0,0,1);
-            text-transform: uppercase; letter-spacing: 0.02em;
-        }
-        .swatch-wide.disabled .mp4-warning-inline { display: flex; }
-        .swatch-wide.disabled .swatch-wide-label { opacity: 0.5; z-index: 2; }
-
-        /* --- BUTTONS --- */
-        .btn {
-            width: 100%; height: 32px; font-size: 11px; font-weight: 600;
-            border-radius: var(--radius-sm); cursor: pointer; transition: 0.15s;
-            background: var(--bg-header); border: 1px solid var(--border); color: var(--text-main);
-            display: flex; align-items: center; justify-content: center; gap: 8px;
-        }
-        .btn:hover { background: var(--bg-input-hover); border-color: var(--text-muted); }
-        .btn:active { transform: translateY(1px); }
-        
-        .btn-primary { background: var(--primary); border-color: var(--primary); color: white; }
-        .btn-primary:hover { background: var(--primary-hover); border-color: var(--primary-hover); }
-        
-        .btn-rec.recording { 
-            background: var(--accent); border-color: var(--accent); color: white;
-            animation: pulse 2s infinite; 
-        }
-
-        /* --- SEGMENTED CONTROLS --- */
-        .export-row {
-            display: flex; align-items: center; justify-content: space-between;
-            margin-bottom: 8px;
-        }
-        .seg-control {
-            background: var(--bg-input); border: 1px solid var(--border);
-            border-radius: var(--radius-sm); display: flex; padding: 2px;
-            width: 100%; height: 36px;
-        }
-        .seg-btn {
-            flex: 1; border: none; background: transparent; color: var(--text-muted);
-            font-size: 10px; font-weight: 600; padding: 0 12px; cursor: pointer;
-            border-radius: 2px; transition: 0.15s; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
-        }
-        .seg-btn span { font-size: 9px; font-weight: 400; opacity: 0.7; }
-        .seg-btn:hover { color: var(--text-main); }
-        .seg-btn.active { background: var(--bg-panel); color: var(--text-main); box-shadow: 0 1px 2px rgba(0,0,0,0.2); }
-
-        /* --- TOGGLE --- */
-        .toggle-row { display: flex; align-items: center; justify-content: space-between; cursor: pointer; padding: 4px 0; }
-        .toggle-switch {
-            width: 32px; height: 18px; background: #333; border-radius: 10px;
-            position: relative; transition: 0.2s; border: 1px solid transparent;
-        }
-        .toggle-switch::after {
-            content:''; position: absolute; left: 2px; top: 2px; width: 12px; height: 12px;
-            background: #aaa; border-radius: 50%; transition: 0.2s; box-shadow: 0 1px 2px rgba(0,0,0,0.2);
-        }
-        input[type="checkbox"] { display: none; }
-        input[type="checkbox"]:checked + .toggle-switch { background: var(--primary); }
-        input[type="checkbox"]:checked + .toggle-switch::after { transform: translateX(14px); background: white; }
-
-        /* --- VIEWPORT --- */
-        main {
-            position: relative; background: #050505;
-            display: flex; flex-direction: column; overflow: hidden;
-            box-shadow: inset 0 0 50px rgba(0,0,0,0.5);
-            z-index: 1; 
-        }
-
-        body.t-active #viewport {
-            z-index: 10002; 
-            position: relative;
-        }
-        
-        .viewport {
-            flex: 1; display: flex; align-items: center; justify-content: center;
-            overflow: hidden;
-            background-image: radial-gradient(#333 1px, transparent 1px);
-            background-size: 24px 24px;
-        }
-
-        #canvas-wrapper {
-            box-shadow: 0 20px 50px rgba(0,0,0,0.5);
-            border: 1px solid #333;
-            background: #000;
-        }
-        
-        #canvas-wrapper.transparent-bg {
-            background-color: #333;
-            background-image: 
-                linear-gradient(45deg, #444 25%, transparent 25%), 
-                linear-gradient(-45deg, #444 25%, transparent 25%), 
-                linear-gradient(45deg, transparent 75%, #444 75%), 
-                linear-gradient(-45deg, transparent 75%, #444 75%);
-            background-size: 20px 20px;
-            background-position: 0 0, 0 10px, 10px -10px, -10px 0px;
-        }
-
-        /* --- INSPECTOR --- */
-        #panel-global, #panel-letter { height: 100%; display: flex; flex-direction: column; }
         #panel-letter { display: none; }
         body.has-selection #panel-global { display: none; }
-        body.has-selection #panel-letter { display: block; }
-
-        .inspector-hero {
-            padding: 24px 20px; background: var(--bg-header); border-bottom: 1px solid var(--border);
-            display: flex; align-items: center; gap: 16px;
-        }
-        .hero-char {
-            width: 56px; height: 56px; background: var(--bg-input); border: 1px solid var(--border);
-            display: flex; align-items: center; justify-content: center;
-            font-size: 32px; color: white; border-radius: var(--radius-md); font-weight: 700;
-            box-shadow: inset 0 2px 4px rgba(0,0,0,0.2);
-        }
-        .hero-meta { display: flex; flex-direction: column; gap: 4px; }
-        .hero-meta strong { color: var(--primary); font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; }
-        .hero-meta span { color: var(--text-muted); font-size: 13px; font-family: var(--font-mono); }
-
-        /* --- GLYPH PICKER --- */
-        .glyph-picker {
-            display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; padding-top: 8px;
-        }
-
-        .glyph-option {
-            aspect-ratio: 1; background: var(--bg-input);
-            border: 1px solid var(--border); border-radius: var(--radius-md);
-            cursor: pointer; position: relative;
-            display: flex; align-items: center; justify-content: center;
-            transition: all 0.1s ease; overflow: hidden;
-            opacity: 0.5;
-        }
-
-        .glyph-option:hover { 
-            background: var(--bg-input-hover); border-color: var(--text-muted); opacity: 0.8;
-        }
-
-        .glyph-option.active {
-            background: rgba(255, 0, 84, 0.1); border-color: var(--primary);
-            box-shadow: inset 0 0 0 1px var(--primary);
-            opacity: 1;
-        }
-
-        .glyph-preview {
-            font-family: 'Firma', sans-serif; font-size: 24px; color: var(--text-main); line-height: 1;
-        }
-        .glyph-option.active .glyph-preview { color: var(--primary); }
-
-        .glyph-label {
-            position: absolute; bottom: 2px; right: 3px;
-            font-size: 8px; font-family: var(--font-mono); color: var(--text-muted); opacity: 0.6;
-        }
-
-        .glyph-apply-btn {
-            grid-column: 1 / -1; height: 32px;
-            background: var(--bg-input); border: 1px solid var(--border);
-            border-radius: var(--radius-sm);
-            display: flex; align-items: center; justify-content: center; gap: 8px;
-            font-size: 11px; font-weight: 500; color: var(--text-muted);
-            cursor: pointer; transition: 0.2s; margin-bottom: 4px;
-        }
-        .glyph-apply-btn:hover { background: var(--bg-input-hover); color: var(--text-main); border-color: var(--text-muted); }
-
-        #zipProgressWrapper { width: 100%; height: 4px; background: #222; margin-top: 12px; display: none; border-radius: 2px; overflow: hidden;}
+        body.has-selection #panel-letter { display: flex; }
+        
+        #zipProgressWrapper { width: 100%; height: 4px; background: #222; margin-top: 10px; display: none; border-radius: 2px; overflow: hidden; }
         #zipBar { width: 0%; height: 100%; background: var(--primary); transition: width 0.1s; }
-        
-        @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.7; } 100% { opacity: 1; } }
-
-        /* --- TUTORIAL OVERLAY --- */
-        .t-overlay {
-            position: fixed; top:0; left:0; width:100%; height:100%;
-            z-index: 9999; display:none; 
-            pointer-events: auto; 
-        }
-        .t-active .t-overlay { display:block; }
-        
-        .t-spotlight {
-            position: absolute; border-radius: 8px;
-            box-shadow: 0 0 0 9999px rgba(0,0,0,0.85);
-            transition: all 0.4s cubic-bezier(0.25, 1, 0.5, 1);
-            pointer-events: none; border: 2px solid var(--primary);
-            z-index: 10000;
-        }
-
-        .t-card {
-            position: absolute; width: 300px; 
-            background: rgba(24, 24, 27, 0.95); 
-            border: 1px solid var(--border);
-            backdrop-filter: blur(10px);
-            border-radius: 8px; padding: 20px;
-            color: #fff; z-index: 10001;
-            box-shadow: 0 20px 50px rgba(0,0,0,0.8);
-            pointer-events: auto; 
-            transition: opacity 0.4s cubic-bezier(0.16, 1, 0.3, 1);
-        }
-        
-        .t-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; }
-        .t-title { font-weight:700; color:var(--primary); font-size:13px; text-transform:uppercase; letter-spacing:0.05em; }
-        .t-step { font-family:var(--font-mono); font-size:10px; color:#555; }
-        .t-body { font-size:12px; line-height:1.5; color:#ccc; margin-bottom:16px; }
-        
-        .t-footer { 
-            display:flex; 
-            align-items:center; 
-            justify-content: space-between; 
-            gap:8px; 
-        }
-        .t-footer-right {
-            display:flex;
-            gap: 8px;
-        }
-        .t-btn { 
-            padding: 6px 12px; border-radius:4px; font-size:11px; font-weight:600; cursor:pointer; 
-            border:1px solid #333; background:#222; color:#fff;
-        }
-        .t-btn:hover { background:#333; }
-        .t-btn-primary { background:var(--primary); border-color:var(--primary); }
-        .t-btn-primary:hover { background:var(--primary-hover); }
-
-        .btn-help {
-            position: fixed; 
-            bottom: 24px; 
-            right: 24px; 
-            left: auto; top: auto;
-            width: 36px; height: 36px;
-            background: #18181b; color: #fff; border-radius: 50%;
-            display: flex; align-items: center; justify-content: center;
-            font-weight: 700; font-family: sans-serif; cursor: pointer;
-            z-index: 99999; border: 1px solid #333; font-size: 16px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.5);
-            transition: transform 0.2s, background 0.2s, box-shadow 0.3s ease;
-        }
-        .btn-help:hover { background: var(--primary); border-color: var(--primary); transform: scale(1.1); }
-        
-        /* Help button "ping" animation */
-        @keyframes helpPing {
-            0% { box-shadow: 0 0 0 0px rgba(255, 0, 84, 0.8); transform: scale(1.2); }
-            100% { box-shadow: 0 0 0 15px rgba(255, 0, 84, 0); transform: scale(1); }
-        }
-        .btn-help.ping { animation: helpPing 0.5s ease-out; }
-
-        .credit-link {
-            position: fixed;
-            bottom: 24px;
-            left: 24px;
-            color: #FF0054;
-            text-decoration: none;
-            font-size: 10px;
-            font-weight: 700;
-            z-index: 99;
-            letter-spacing: 0.03em;
-            font-family: var(--font-ui);
-            transition: opacity 0.2s;
-        }
-        .credit-link:hover {
-            text-decoration: underline;
-            opacity: 1;
-        }
-
     </style>
 </head>
-<body>
-
-    <a href="https://x10guy.studio" target="_blank" class="credit-link">MADE BY גיא אקשטיין המלך</a>
-
-    <div class="btn-help" onclick="Tutorial.start()" title="Start Tutorial">?</div>
-    <div id="tOverlay" class="t-overlay">
-        <div id="tSpotlight" class="t-spotlight"></div>
-        <div id="tCard" class="t-card">
-            <div class="t-header">
-                <span class="t-title" id="tTitle">WELCOME</span>
-                <span class="t-step" id="tStep">1/10</span>
-            </div>
-            <div class="t-body" id="tBody">
-                Welcome to Firma Glitcher.
-            </div>
-            <div class="t-footer">
-                <button class="t-btn" onclick="Tutorial.end()">Skip Tutorial</button>
-                <div class="t-footer-right">
-                    <button class="t-btn" id="tBtnBack" onclick="Tutorial.prev()" style="display:none;">Back</button>
-                    <button class="t-btn t-btn-primary" id="tBtnNext" onclick="Tutorial.next()">Next</button>
-                </div>
-            </div>
-        </div>
-    </div>
+<body class="has-selection">
 
     <aside>
         <div class="panel-header">
-            <div class="brand">
-                <div class="brand-logo-container">
-                    <svg viewBox="0 0 502 447">
-                        <polygon points="252.68 283.12 364.65 283.12 411.29 186.87 206.77 186.87 163.53 96.26 455.18 96.26 501.78 0 0 0 212.97 446.31 330.54 446.31 252.68 283.12"/>
-                    </svg>
-                </div>
-                FIRMA<span>FONT</span>
-            </div>
-            <div style="font-size:10px; color:#555; font-family:var(--font-mono);">POLIN LIVE</div>
+            <div class="brand"><div class="brand-logo-container"><svg viewBox="0 0 502 447"><polygon points="252.68 283.12 364.65 283.12 411.29 186.87 206.77 186.87 163.53 96.26 455.18 96.26 501.78 0 0 0 212.97 446.31 330.54 446.31 252.68 283.12"/></svg></div> FIRMA<span>FONT</span></div>
         </div>
-
         <div class="panel-content">
-            <div class="section-group" id="t-step-input">
-                <div class="section-title"><i data-lucide="type" class="icon-sm"></i> Source Content</div>
-                <textarea id="inpText" spellcheck="false" placeholder="Enter text here...">FIRMA סטודיו
+            <div class="section-group">
+                <div class="section-title">Source</div>
+                <textarea id="inpText" spellcheck="false">FIRMA סטודיו
 2025</textarea>
             </div>
-
-            <div style="height:1px; background:var(--border);"></div>
-
-            <div class="section-group" id="t-step-color">
-                <div class="section-title"><i data-lucide="palette" class="icon-sm"></i> Appearance</div>
-                
-                <label class="control-label" style="margin-bottom:6px;">Text Color</label>
+            <div class="section-group">
+                <div class="section-title">Appearance</div>
                 <div class="color-grid" id="gridTextColor">
-                    <div class="swatch custom" data-type="text-custom" title="Custom Color">
-                        <i data-lucide="x" class="swatch-x-icon icon-sm"></i>
-                        <input type="color" id="inpColor" value="#ffffff">
-                    </div>
-                    <div class="swatch" data-color="#FFFFFF" onclick="setColor('#FFFFFF')" style="background:#FFFFFF" title="White"></div>
-                    <div class="swatch" data-color="#000000" onclick="setColor('#000000')" style="background:#000000" title="Black"></div>
-                    <div class="swatch" data-color="#FF0054" onclick="setColor('#FF0054')" style="background:#FF0054" title="Firma Pink"></div>
-                    
-                    <div class="swatch" data-color="#FF3924" onclick="setColor('#FF3924')" style="background:#FF3924" title="Orange Red"></div>
-                    <div class="swatch" data-color="#DFF946" onclick="setColor('#DFF946')" style="background:#DFF946" title="Lime"></div>
-                    <div class="swatch" data-color="#00A450" onclick="setColor('#00A450')" style="background:#00A450" title="Green"></div>
-                    <div class="swatch" data-color="#924CEE" onclick="setColor('#924CEE')" style="background:#924CEE" title="Purple"></div>
+                    <div class="swatch" data-color="#FFFFFF" style="background:#fff"></div>
+                    <div class="swatch" data-color="#FF0054" style="background:#FF0054"></div>
+                    <div class="swatch" data-color="#DFF946" style="background:#DFF946"></div>
+                    <div class="swatch" data-color="#000000" style="background:#000"></div>
                 </div>
-
-                <div class="color-label-row" style="margin-top:12px;">
-                    <label class="control-label">Background</label>
-                </div>
-
-                <div id="bgSwatchTrans" class="swatch-wide" onclick="setBgMode('transparent')">
-                    <span class="swatch-wide-label">Transparent</span>
-                    <div class="mp4-warning-inline">
-                        Supports Alpha
-                    </div>
-                </div>
-                
-                <div class="color-grid" id="gridBgColor">
-                    <div class="swatch custom" data-type="bg-custom" title="Custom Background">
-                        <i data-lucide="x" class="swatch-x-icon icon-sm"></i>
-                        <input type="color" id="inpBgColor" value="#000000">
-                    </div>
-                    <div class="swatch" data-color="#000000" onclick="setBgMode('color', '#000000')" style="background:#000000" title="Black"></div>
-                    <div class="swatch" data-color="#FFFFFF" onclick="setBgMode('color', '#FFFFFF')" style="background:#FFFFFF" title="White"></div>
-                    <div class="swatch" data-color="#FF0054" onclick="setBgMode('color', '#FF0054')" style="background:#FF0054" title="Firma Pink"></div>
-                    
-                    <div class="swatch" data-color="#FF3924" onclick="setBgMode('color', '#FF3924')" style="background:#FF3924" title="Orange Red"></div>
-                    <div class="swatch" data-color="#DFF946" onclick="setBgMode('color', '#DFF946')" style="background:#DFF946" title="Lime"></div>
-                    <div class="swatch" data-color="#00A450" onclick="setBgMode('color', '#00A450')" style="background:#00A450" title="Green"></div>
-                    <div class="swatch" data-color="#924CEE" onclick="setBgMode('color', '#924CEE')" style="background:#924CEE" title="Purple"></div>
-                </div>
-            </div>
-
-            <div style="height:1px; background:var(--border);"></div>
-
-            <div class="section-group" id="t-step-typo">
-                <div class="section-title"><i data-lucide="case-sensitive" class="icon-sm"></i> Typography</div>
-                
-                <div class="control-row">
-                    <span class="control-label" title="Font Size"><i data-lucide="move-vertical" class="icon-sm"></i> Size</span>
-                    <input type="range" id="slSize" min="24" max="800" value="150">
-                    <input type="number" id="numSize" class="num-input" value="150">
-                </div>
-
-                <div class="control-row">
-                    <span class="control-label" title="Line Height"><i data-lucide="align-justify" class="icon-sm"></i> Leading</span>
-                    <input type="range" id="slLH" min="0.8" max="2.0" step="0.05" value="1.0">
-                    <input type="number" id="numLH" class="num-input" value="1.0" step="0.05">
-                </div>
-
-                <div class="control-row">
-                    <span class="control-label" title="Tracking"><i data-lucide="move-horizontal" class="icon-sm"></i> Track</span>
-                    <input type="range" id="slTrack" min="-0.2" max="0.5" step="0.01" value="0">
-                    <input type="number" id="numTrack" class="num-input" value="0" step="0.01">
-                </div>
-
-                <label class="toggle-row">
-                    <span class="control-label"><i data-lucide="grid" class="icon-sm"></i> Lock Characters to Grid</span>
-                    <input type="checkbox" id="chkLockLayout">
-                    <div class="toggle-switch"></div>
-                </label>
+                <div id="bgSwatchTrans" class="swatch-wide" onclick="setBgMode('transparent')">TRANSPARENT</div>
             </div>
         </div>
     </aside>
 
-    <main>
-        <div class="viewport" id="viewport">
-            <div id="canvas-wrapper">
-                <canvas id="exportCanvas" width="1920" height="1080"></canvas>
-            </div>
+    <main id="viewport">
+        <div id="canvas-wrapper">
+            <canvas id="exportCanvas" width="1920" height="1080"></canvas>
         </div>
     </main>
 
     <aside>
         <div id="panel-global">
-            <div class="panel-header">
-                <div style="font-size:12px; font-weight:600; color:#fff; display:flex; align-items:center; gap:8px;">
-                    <i data-lucide="sliders" class="icon-sm"></i> SCENE SETTINGS
-                </div>
-            </div>
-
+            <div class="panel-header"><div>SCENE</div></div>
             <div class="panel-content">
-                <div class="section-group" id="t-step-glitch">
-                    <div class="section-title"><i data-lucide="zap" class="icon-sm"></i> Glitch Engine</div>
-                    
-                    <div class="control-row">
-                        <span class="control-label">Speed</span>
-                        <input type="range" id="slFps" min="1" max="60" value="24">
-                        <input type="number" id="numFps" class="num-input" value="24">
-                    </div>
-
-                    <div class="control-row">
-                        <span class="control-label">Count</span>
-                        <input type="range" id="slMax" min="0" max="25" value="3">
-                        <input type="text" id="numMax" class="num-input" value="3">
-                    </div>
-
-                    <div class="control-row">
-                        <span class="control-label">Chance</span>
-                        <input type="range" id="slProb" min="0" max="100" value="40">
-                        <input type="number" id="numProb" class="num-input" value="40">
-                    </div>
-
-                    <div class="control-row">
-                        <span class="control-label">Hold</span>
-                        <input type="range" id="slDur" min="1" max="60" value="8">
-                        <input type="number" id="numDur" class="num-input" value="8">
-                    </div>
-
-                    <button id="btnResetEngine" class="btn" style="margin-top: 8px; font-size: 10px; height: 28px; opacity: 0.8;">
-                        <i data-lucide="refresh-ccw" class="icon-sm"></i> RESET ENGINE
-                    </button>
-                </div>
-
-                <div style="flex:1;"></div>
-
-                <div style="border-top:1px solid var(--border); padding-top:24px;" id="t-step-export">
-                    <div class="section-title"><i data-lucide="film" class="icon-sm"></i> Export</div>
-                    
-                    <div class="export-row">
-                        <span class="control-label">Resolution</span>
-                        <select id="selResolution" style="width:145px;">
-                            <option value="3840,2160">4K Video (3840x2160)</option>
-                            <option value="1920,1080" selected>HD Video (1920x1080)</option>
-                            <option value="1080,1920">Story / TikTok (1080x1920)</option>
-                            <option value="1080,1350">Instagram Post (1080x1350)</option>
-                            <option value="1080,1080">Linkedin Square (1080x1080)</option>
-                        </select>
-                    </div>
-
-                    <div class="section-group" style="margin-top:12px;">
-                        <div class="seg-control">
-                            <button class="seg-btn active" id="btnFmtZip" onclick="setExportFormat('zip')">
-                                PNG SEQUENCE
-                                <span>(Instant)</span>
-                            </button>
-                            <button class="seg-btn" id="btnFmtMov" onclick="setExportFormat('mov')">
-                                PRORES MOV
-                                <span>(Alpha Video)</span>
-                            </button>
-                        </div>
-                    </div>
-
-                    <button id="btnRecord" class="btn btn-rec" style="height: 40px; justify-content:center; margin-top:12px;">
-                        <i data-lucide="images" class="icon-sm"></i> REC SEQUENCE
-                    </button>
-                    
-                    <div id="recStatus" style="font-size:10px; color:var(--text-muted); text-align:center; margin-top:12px; font-family:var(--font-mono); min-height:14px; white-space: pre-wrap;"></div>
-                    <div id="zipProgressWrapper"><div id="zipBar"></div></div>
-                </div>
-            </div>
-        </div>
-
-        <div id="panel-letter">
-            <div class="panel-header" style="background:var(--primary); border:none;">
-                <div style="font-size:12px; font-weight:700; color:#fff; display:flex; align-items:center; gap:8px;">
-                    <i data-lucide="mouse-pointer-2" class="icon-sm"></i> CHARACTER INSPECTOR
-                </div>
-                <button id="btnCloseInsp" style="background:rgba(0,0,0,0.2); border:none; color:white; padding:4px 8px; border-radius:4px; cursor:pointer; font-size:10px;">DONE</button>
-            </div>
-            
-            <div class="inspector-hero">
-                <div class="hero-char" id="inspCharDisplay">A</div>
-                <div class="hero-meta">
-                    <strong style="color:white;">Selected</strong>
-                    <span id="inspIndex">INDEX #0</span>
+                <div class="section-group">
+                    <div class="section-title">Engine</div>
+                    <div class="control-row"><span>Speed</span><input type="range" id="slFps" min="1" max="60" value="24"><input type="number" id="numFps" class="num-input" value="24"></div>
                 </div>
                 <div style="flex:1"></div>
-                <button id="btnLock" class="btn" style="width:auto; padding:0 12px; font-size:10px;">
-                    <i data-lucide="lock" class="icon-sm"></i> LOCK
-                </button>
-            </div>
-
-            <div class="panel-content">
-                <div class="section-group" id="t-step-pool">
-                    <div class="section-title"><i data-lucide="sliders-horizontal" class="icon-sm"></i> Glyph Pool</div>
-                    <div style="font-size:10px; color:#666; margin-bottom:4px;">Select glyphs to include in the glitch cycle.</div>
-                
-                    
-                    <div id="glyphGrid" class="glyph-picker"></div>
-                </br>
-                                        <button id="btnApplyAll" class="glyph-apply-btn">
-                        <i data-lucide="copy" class="icon-sm"></i> Apply to all instances of the same letter
-                    </button>
-                </div>
-
                 <div class="section-group">
-                    <div class="section-title"><i data-lucide="move-horizontal" class="icon-sm"></i> Kerning</div>
-                    <div class="control-row">
-                        <span class="control-label">Left</span>
-                        <input type="range" id="slML" min="-1" max="1" step="0.05" value="0">
-                        <input type="number" id="numML" class="num-input" value="0" step="0.05">
+                    <div class="section-title">Export</div>
+                    <div class="seg-control">
+                        <button class="seg-btn active" onclick="setFormat('zip')">PNG SEQ</button>
+                        <button class="seg-btn" onclick="setFormat('mov')">MOV PRORES</button>
                     </div>
-                    <div class="control-row">
-                        <span class="control-label">Right</span>
-                        <input type="range" id="slMR" min="-1" max="1" step="0.05" value="0">
-                        <input type="number" id="numMR" class="num-input" value="0" step="0.05">
-                    </div>
+                    <button id="btnRecord" class="btn btn-primary btn-rec" onclick="toggleRecording()">START RECORDING</button>
+                    <div id="recStatus" style="text-align:center; font-size:10px; margin-top:8px; opacity:0.6;"></div>
+                    <div id="zipProgressWrapper"><div id="zipBar"></div></div>
                 </div>
             </div>
         </div>
     </aside>
 
 <script>
-/* FIRMA GLITCHER PRO */
 const FONT_NAME = 'Firma';
 const FONT_URL = 'Firma.otf';
 
 const app = {
-    rawText: "FIRMA סטודיו\n2025",
-    textColor: '#ffffff',
-    fontSize: 150, tracking: 0, lineHeight: 1.0, 
-    lockLayout: false, width: 1920, height: 1080,
-    previewScale: 0, fps: 24, maxConcurrent: 3, probability: 0.4, minDuration: 8,
-    activeFeatures: ["ss01", "ss02", "ss03", "ss04", "ss05", "ss06"],
-    exportFormat: 'zip', bgMode: 'transparent', bgColor: '#000000',
-    sequenceLimit: 300,
-    charSettings: {}, 
-    charMap: {
-        '0': ['ss02'], '!': ['ss01'],
-        'A': ['ss01', 'ss02', 'ss03', 'ss04'], 'B': ['ss01'], 'C': ['ss01'], 'D': ['ss01'], 'E': ['ss01'],
-        'F': ['ss01', 'ss03', 'ss04', 'ss05', 'ss06'], 'G': ['ss01'], 'H': ['ss01'], 'I': ['ss01', 'ss02'],
-        'J': ['ss01', 'ss02'], 'K': ['ss01'], 'L': ['ss01'], 'M': ['ss02', 'ss03'], 'N': ['ss01'], 'O': ['ss01'],
-        'P': ['ss01'], 'Q': ['ss01'], 'R': ['ss01', 'ss02', 'ss03', 'ss04'], 'S': ['ss01'], 'T': ['ss01'],
-        'U': ['ss01'], 'V': ['ss01'], 'W': ['ss01'], 'X': ['ss01'], 'Y': ['ss01', 'ss02'], 'Z': ['ss01'],
-        'א': ['ss01'], 'ב': ['ss01'], 'ג': ['ss01'], 'ד': ['ss01'], 'ה': ['ss01', 'ss02'], 'ו': ['ss01'],
-        'ז': ['ss01'], 'ח': ['ss01'], 'ט': ['ss01'], 'י': ['ss01'], 'ך': ['ss01'], 'כ': ['ss01'], 'ל': ['ss01'],
-        'ם': ['ss01'], 'מ': ['ss01', 'ss02'], 'ן': ['ss01'], 'נ': ['ss01'], 'ס': ['ss01'], 'ע': ['ss01'],
-        'ף': ['ss01'], 'פ': ['ss01'], 'ץ': ['ss01'], 'צ': ['ss01'], 'ק': ['ss01'], 'ר': ['ss01'], 'ש': ['ss01'],
-        'ת': ['ss01'], 'А': ['ss01'], 'Д': ['ss01'], 'И': ['ss01'], 'Й': ['ss01'], 'Л': ['ss01'], 'Δ': ['ss01'], 'Λ': ['ss01'], 
-    },
-    isPlaying: true, lastTime: 0, nodes: [], selectionIndex: -1,
-    isRecording: false, sequenceFrames: [], mediaRecorder: null, recordedChunks: [],
-    widthCache: {}, bidiCache: {},
-    ffmpeg: null, ffmpegLoaded: false
+    rawText: "FIRMA סטודיו\n2025", textColor: '#ffffff', fontSize: 150, tracking: 0, lineHeight: 1.0,
+    width: 1920, height: 1080, fps: 24, exportFormat: 'zip', bgMode: 'transparent', bgColor: '#000',
+    isRecording: false, sequenceFrames: [], lastTime: 0, nodes: [], selectionIndex: -1,
+    charMap: { 'A': ['ss01','ss02'], 'F': ['ss01','ss03'], 'א': ['ss01'] }
 };
 
 const dom = {
     input: document.getElementById('inpText'),
     canvas: document.getElementById('exportCanvas'),
-    canvasWrapper: document.getElementById('canvas-wrapper'),
-    viewport: document.getElementById('viewport'),
     ctx: document.getElementById('exportCanvas').getContext('2d', { alpha: true }),
-    inpColor: document.getElementById('inpColor'),
-    inpBgColor: document.getElementById('inpBgColor'),
-    inspCharDisplay: document.getElementById('inspCharDisplay'),
-    inspIndex: document.getElementById('inspIndex'),
-    btnLock: document.getElementById('btnLock'),
-    btnApplyAll: document.getElementById('btnApplyAll'),
-    slML: document.getElementById('slML'), numML: document.getElementById('numML'),
-    slMR: document.getElementById('slMR'), numMR: document.getElementById('numMR'),
-    glyphGrid: document.getElementById('glyphGrid'),
-    selResolution: document.getElementById('selResolution'),
     btnRecord: document.getElementById('btnRecord'),
     recStatus: document.getElementById('recStatus'),
-    zipProgressWrapper: document.getElementById('zipProgressWrapper'),
     zipBar: document.getElementById('zipBar'),
-    measureSpan: null, bidiContainer: null,
-    chkLockLayout: document.getElementById('chkLockLayout')
+    zipProgressWrapper: document.getElementById('zipProgressWrapper')
 };
-
-const Tutorial = {
-    active: false,
-    stepIndex: 0,
-    steps: [
-        { 
-            target: 'body', 
-            title: 'Welcome to Firma Glitcher', 
-            body: 'This tool allows you to create generative kinetic typography using the Firma font. <br><br> Developed by <a href="https://x10guy.studio" target="_blank" style="color:#FF0054; font-weight:bold;">גיא אקשטיין המלך</a>',
-            position: 'center'
-        },
-        { 
-            target: '#inpText', 
-            title: '2. Source Content', 
-            body: 'This is where you enter your source text. It supports Hebrew, English, and punctuation.',
-            onEnter: () => dom.input.focus()
-        },
-        { 
-            target: '#t-step-color', 
-            title: '3. Appearance', 
-            body: 'Customize your palette here. <br><b>Note:</b> "Transparent" background is available for both PNG Sequence and ProRes MOV.' 
-        },
-        { 
-            target: '#t-step-typo', 
-            title: '4. Typography', 
-            body: 'Fine-tune the layout. Toggle <b>"Lock Layout"</b> to prevent characters from jittering in width during the glitch animation.',
-            offsetX: 320 
-        },
-        { 
-            target: '#canvas-wrapper', 
-            title: '5. The Stage', 
-            body: 'This is your live render preview.',
-            position: 'center',
-            offsetY: 100,
-            offsetX: 150
-        },
-        { 
-            target: '#t-step-glitch', 
-            title: '6. Glitch Engine', 
-            body: '<b>Count:</b> Strictly limits how many characters glitch at once. <br><b>Reset:</b> Restore all glitch parameters to default values.',
-            onEnter: () => { deselect(); }
-        },
-        { 
-            target: '#t-step-export', 
-            title: '7. Export', 
-            body: 'Select <b>PNG Sequence</b> (Instant) or <b>ProRes MOV</b> (Requires Processing). <br>Both formats support Alpha Channel for After Effects.',
-            onEnter: () => { deselect(); }
-        },
-        { 
-            target: '#panel-letter', 
-            extraHighlight: '#canvas-wrapper',
-            title: '8. Per-Character Modification', 
-            body: 'The Inspector panel allows you to modify settings for specific characters. Interaction is disabled during this tour, but normally you would click a letter to open this view.',
-            onEnter: () => { if(app.nodes.length > 0) selectNode(0); },
-            offsetY: 80,
-            offsetX: -100
-        },
-        { 
-            target: '#t-step-pool', 
-            title: '9. Glyph Pool', 
-            body: 'This is the heart of the glitch engine. You can select which glyphs are included in the random cycle for the current character.' 
-        },
-        { 
-            target: '#btnLock', 
-            title: '10. Locking', 
-            body: '<b>Lock:</b> Use this to exclude specific characters from the glitch cycle entirely.' 
-        }
-    ],
-
-    start: function() {
-        this.active = true; 
-        this.stepIndex = 0;
-        const card = document.getElementById('tCard');
-        card.style.opacity = "1";
-        card.style.transform = "scale(1)";
-        document.body.classList.add('t-active'); 
-        this.runStep();
-    },
-
-    end: function() {
-        const card = document.getElementById('tCard');
-        const spot = document.getElementById('tSpotlight');
-        const helpBtn = document.querySelector('.btn-help');
-        const btnRect = helpBtn.getBoundingClientRect();
-
-        spot.style.opacity = 0;
-
-        // Animate card towards the help button
-        card.style.transition = "all 0.5s cubic-bezier(0.4, 0, 0.2, 1)";
-        card.style.left = `${btnRect.left + (btnRect.width / 2)}px`;
-        card.style.top = `${btnRect.top + (btnRect.height / 2)}px`;
-        card.style.transform = "translate(-50%, -50%) scale(0)";
-        card.style.opacity = "0";
-
-        setTimeout(() => {
-            this.active = false; 
-            document.body.classList.remove('t-active');
-            deselect(); 
-            
-            // Trigger pink ping indication
-            helpBtn.classList.add('ping');
-            setTimeout(() => helpBtn.classList.remove('ping'), 600);
-
-            // Reset styles for next load
-            card.style.transition = ""; 
-        }, 500);
-    },
-
-    next: function() {
-        if(this.stepIndex < this.steps.length - 1) { 
-            this.stepIndex++; 
-            this.runStep(); 
-        } else { 
-            this.end(); 
-        }
-    },
-
-    prev: function() {
-        if(this.stepIndex > 0) {
-            this.stepIndex--;
-            this.runStep();
-        }
-    },
-
-    runStep: function() {
-        const step = this.steps[this.stepIndex];
-        if(step.onEnter) step.onEnter();
-
-        const btnNext = document.getElementById('tBtnNext');
-        btnNext.innerText = (this.stepIndex === this.steps.length - 1) ? "Finish" : "Next";
-
-        const btnBack = document.getElementById('tBtnBack');
-        btnBack.style.display = (this.stepIndex === 0) ? 'none' : 'block';
-
-        document.getElementById('tStep').innerText = `${this.stepIndex + 1}/${this.steps.length}`;
-
-        const spot = document.getElementById('tSpotlight');
-        let rect;
-        
-        if(step.target === 'body') {
-            rect = { top: window.innerHeight/2, left: window.innerWidth/2, width: 0, height: 0, right: window.innerWidth/2, bottom: window.innerHeight/2 };
-            spot.style.opacity = 1;
-            spot.style.width = '0px'; spot.style.height = '0px';
-            spot.style.top = '50%'; spot.style.left = '50%';
-        } else {
-            const el = document.querySelector(step.target);
-            rect = el.getBoundingClientRect();
-            spot.style.opacity = 1;
-            
-            const padding = 24; 
-            spot.style.width = (rect.width + padding) + 'px'; 
-            spot.style.height = (rect.height + padding) + 'px';
-            spot.style.top = (rect.top - (padding/2)) + 'px'; 
-            spot.style.left = (rect.left - (padding/2)) + 'px';
-        }
-
-        if (step.extraHighlight) {
-            const extraEl = document.querySelector(step.extraHighlight);
-            const extraRect = extraEl.getBoundingClientRect();
-            const top = Math.min(rect.top, extraRect.top);
-            const left = Math.min(rect.left, extraRect.left);
-            const right = Math.max(rect.right, extraRect.right);
-            const bottom = Math.max(rect.bottom, extraRect.bottom);
-            
-            spot.style.width = (right - left + 20) + 'px';
-            spot.style.height = (bottom - top + 20) + 'px';
-            spot.style.top = (top - 10) + 'px';
-            spot.style.left = (left - 10) + 'px';
-        }
-
-        document.getElementById('tTitle').innerText = step.title;
-        document.getElementById('tBody').innerHTML = step.body;
-
-        const card = document.getElementById('tCard');
-        if(step.position === 'center') {
-            card.style.top = `calc(50% + ${step.offsetY || 0}px)`;
-            card.style.left = `calc(50% + ${step.offsetX || 0}px)`;
-            card.style.transform = 'translate(-50%, -50%)';
-        } else {
-            const margin = 20;
-            let top = rect.bottom + margin + (step.offsetY || 0);
-            let left = rect.left + (step.offsetX || 0);
-
-            top = Math.max(margin, Math.min(top, window.innerHeight - 250));
-            left = Math.max(margin, Math.min(left, window.innerWidth - 320));
-
-            card.style.transform = 'none';
-            card.style.top = top + 'px'; 
-            card.style.left = left + 'px';
-        }
-    }
-};
-
-lucide.createIcons();
 
 async function init() {
-    try {
-        const font = new FontFace(FONT_NAME, `url(${FONT_URL})`);
-        await font.load(); document.fonts.add(font);
-    } catch(e) {}
-    dom.measureSpan = document.createElement('span');
-    Object.assign(dom.measureSpan.style, { position:'absolute', visibility:'hidden', whiteSpace:'pre', top:'-9999px', left:'-9999px' });
-    document.body.appendChild(dom.measureSpan);
-    dom.bidiContainer = document.createElement('div');
-    Object.assign(dom.bidiContainer.style, { position:'absolute', visibility:'hidden', whiteSpace:'pre', fontFamily:FONT_NAME, top:'-9999px', left:'-9999px' });
-    document.body.appendChild(dom.bidiContainer);
-    setupControls(); syncText(); handleResize(); 
-    window.addEventListener('resize', handleResize); updateActiveSwatches(); loop(0);
-    
-    setTimeout(() => Tutorial.start(), 1000);
+    try { const font = new FontFace(FONT_NAME, `url(${FONT_URL})`); await font.load(); document.fonts.add(font); } catch(e){}
+    syncText(); requestAnimationFrame(loop);
 }
 
-// --- FFMPEG / PRORES LOGIC (GITHUB PAGES COMPATIBLE) ---
-async function initFFmpeg() {
-    if(app.ffmpeg) return;
+// --- MEDIABUNNY EXPORT LOGIC ---
+async function renderMOV() {
+    if (!window.MediabunnyEncoder) { alert("Encoder library loading..."); return; }
     
-    const { createFFmpeg } = FFmpeg;
-    
-    // Explicitly using the SINGLE THREADED core.
-    // This is required for GitHub Pages which does not support SharedArrayBuffer headers.
-    app.ffmpeg = createFFmpeg({ 
-        log: true, 
-        corePath: 'https://unpkg.com/@ffmpeg/core-st@0.11.1/dist/ffmpeg-core.js',
-    });
-    
-    // UI Feedback for loading
-    dom.recStatus.textContent = "LOADING ENGINE...";
-    try {
-        await app.ffmpeg.load();
-        app.ffmpegLoaded = true;
-        console.log("FFmpeg Ready (Single Threaded)");
-        dom.recStatus.textContent = "";
-    } catch(e) {
-        console.error(e);
-        dom.recStatus.textContent = "ENGINE ERROR";
-        alert("Failed to load video engine. Please use Chrome/Edge/Firefox on Desktop.");
-    }
-}
-
-async function renderProRes() {
-    if (!app.ffmpegLoaded) await initFFmpeg();
-    if (!app.ffmpegLoaded) return; // Exit if failed to load
-    
-    dom.recStatus.textContent = "ENCODING VIDEO... (Please Wait)";
+    dom.recStatus.textContent = "INITIALIZING HARDWARE ENCODER...";
     dom.zipProgressWrapper.style.display = "block";
-    dom.zipBar.style.width = "10%";
 
-    const fps = app.fps;
-    
-    // Write captured PNGs to FFmpeg filesystem
     try {
+        const encoder = new window.MediabunnyEncoder({
+            width: app.width, height: app.height, fps: app.fps,
+            codec: 'avc1.4d002a', // H.264 High Profile
+            alpha: true // Enable transparency
+        });
+
         for (let i = 0; i < app.sequenceFrames.length; i++) {
-            const blob = app.sequenceFrames[i];
-            const name = `frame_${String(i).padStart(4, '0')}.png`;
-            const data = await new Response(blob).arrayBuffer(); // Clean way to get buffer
-            app.ffmpeg.FS('writeFile', name, new Uint8Array(data));
-            
-            // Update UI
-            const pct = 10 + ((i / app.sequenceFrames.length) * 30);
-            dom.zipBar.style.width = `${pct}%`;
+            const img = await createImageBitmap(app.sequenceFrames[i]);
+            await encoder.addFrame(img);
+            dom.zipBar.style.width = ((i / app.sequenceFrames.length) * 100) + "%";
         }
-    } catch(e) {
-        console.error("Write error:", e);
-        dom.recStatus.textContent = "WRITE ERROR";
-        return;
-    }
 
-    // Run FFmpeg (ProRes 4444 with Alpha)
-    // Note: Single threaded is slower, so we inform user
-    dom.recStatus.textContent = "RENDERING PRORES... (May take a moment)";
-    dom.zipBar.style.width = "40%";
-
-    try {
-        await app.ffmpeg.run(
-            '-framerate', String(fps),
-            '-pattern_type', 'glob', '-i', '*.png',
-            '-c:v', 'prores_ks', 
-            '-profile:v', '4444', 
-            '-pix_fmt', 'yuva444p10le', 
-            '-vendor', 'apl0', 
-            '-bits_per_mb', '8000',
-            '-y', // Overwrite
-            'output.mov'
-        );
-    } catch(err) {
-        alert("Encoding Failed. Check Console.");
-        console.error(err);
-        dom.recStatus.textContent = "ENCODE ERROR";
-        return;
-    }
-
-    dom.zipBar.style.width = "90%";
-    dom.recStatus.textContent = "SAVING...";
-
-    const data = app.ffmpeg.FS('readFile', 'output.mov');
-    const videoBlob = new Blob([data.buffer], { type: 'video/quicktime' });
-    saveAs(videoBlob, `Firma_ProRes_${Date.now()}.mov`);
-
-    // Cleanup to free memory (Critical for WASM)
-    try {
-        app.ffmpeg.FS('unlink', 'output.mov');
-        for (let i = 0; i < app.sequenceFrames.length; i++) {
-            app.ffmpeg.FS('unlink', `frame_${String(i).padStart(4, '0')}.png`);
-        }
-    } catch(e){}
+        const blob = await encoder.export();
+        saveAs(blob, `Firma_Alpha_${Date.now()}.mov`);
+    } catch(e) { console.error(e); alert("Export failed. Use Chrome/Safari on Mac."); }
 
     dom.recStatus.textContent = "DONE";
-    setTimeout(() => { 
-        dom.recStatus.textContent = ""; 
-        dom.zipProgressWrapper.style.display = "none"; 
-        dom.zipBar.style.width = "0%"; 
-    }, 3000);
+    setTimeout(() => dom.zipProgressWrapper.style.display = "none", 2000);
 }
 
 function syncText() {
-    const chars = Array.from(app.rawText); 
-    app.nodes = chars.map((char, i) => {
-        const existing = app.nodes[i];
-        if(existing && existing.originalChar === char) return existing;
-        let initialPool = app.charSettings[char] ? [...app.charSettings[char]] : [null, ...(app.charMap[char] || [])];
-        return {
-            originalChar: char, override: null, locked: false, activeTag: null,
-            glyphPool: initialPool, forcedTags: [], marginLeft: 0, marginRight: 0, 
-            timer: Math.floor(Math.random() * 10), x: 0, y: 0, width: 0,
-            hitX: 0, hitY: 0, hitW: 0, hitH: 0
-        };
-    });
-    app.widthCache = {}; app.bidiCache = {};
-    if(app.selectionIndex >= app.nodes.length) deselect();
+    app.nodes = Array.from(app.rawText).map(char => ({
+        originalChar: char, activeTag: null, timer: 0, glyphPool: [null, ...(app.charMap[char]||[])]
+    }));
 }
 
-function resolveBiDiOrder(lineNodes, isBaseRtl) {
-    const lineString = lineNodes.map(n => n.originalChar).join('');
-    const key = `${lineString}_${isBaseRtl ? 'RTL' : 'LTR'}`;
-    if (app.bidiCache[key]) return app.bidiCache[key].map(i => lineNodes[i]);
-    dom.bidiContainer.style.direction = isBaseRtl ? 'rtl' : 'ltr';
-    dom.bidiContainer.textContent = lineString;
-    const nodePositions = [];
-    try {
-        for (let i = 0; i < lineNodes.length; i++) {
-            const range = document.createRange();
-            range.setStart(dom.bidiContainer.childNodes[0], i);
-            range.setEnd(dom.bidiContainer.childNodes[0], i + 1);
-            nodePositions.push({ index: i, x: range.getBoundingClientRect().left });
-        }
-    } catch(e) { return lineNodes; }
-    nodePositions.sort((a, b) => a.x - b.x);
-    const indices = nodePositions.map(p => p.index);
-    app.bidiCache[key] = indices;
-    return indices.map(i => lineNodes[i]);
-}
-
-function getGlyphWidth(char, features) {
-    const key = `${char}_${app.fontSize}_${features.join('_')}`;
-    if (app.widthCache[key] !== undefined) return app.widthCache[key];
-    dom.measureSpan.style.fontFamily = FONT_NAME;
-    dom.measureSpan.style.fontSize = `${app.fontSize}px`;
-    dom.measureSpan.style.fontFeatureSettings = features.length > 0 ? features.map(t => `"${t}" 1`).join(', ') : "normal";
-    dom.measureSpan.textContent = char;
-    const width = dom.measureSpan.getBoundingClientRect().width;
-    app.widthCache[key] = width;
-    return width;
-}
-
-function handleResize() {
-    const vw = dom.viewport.clientWidth; const vh = dom.viewport.clientHeight;
-    const scale = Math.min((vw - 80) / app.width, (vh - 80) / app.height);
-    dom.canvasWrapper.style.transform = `scale(${scale})`;
-}
-
-function render() {
-    const ctx = dom.ctx; const w = app.width; const h = app.height;
-    if (app.bgMode === 'color') {
-        ctx.fillStyle = app.bgColor; ctx.fillRect(0, 0, w, h);
-        dom.canvasWrapper.classList.remove('transparent-bg');
+function toggleRecording() {
+    if (app.isRecording) {
+        app.isRecording = false;
+        dom.btnRecord.textContent = "START RECORDING";
+        app.exportFormat === 'zip' ? finalizeZip() : renderMOV();
     } else {
-        ctx.clearRect(0, 0, w, h);
-        dom.canvasWrapper.classList.add('transparent-bg');
+        app.isRecording = true;
+        app.sequenceFrames = [];
+        dom.btnRecord.textContent = "STOP RECORDING";
+        dom.btnRecord.classList.add('recording');
     }
-    ctx.textRendering = "optimizeLegibility";
-    ctx.textAlign = "left"; ctx.textBaseline = "alphabetic";
-    const lines = []; let currentLine = [];
-    app.nodes.forEach(node => {
-        if (node.originalChar === '\n') { lines.push(currentLine); currentLine = []; }
-        else { currentLine.push(node); }
-    });
-    lines.push(currentLine);
-    const lhPx = app.fontSize * app.lineHeight;
-    const totalH = lines.length * lhPx;
-    let cursorY = (h / 2) - (totalH / 2) + (app.fontSize * 0.75);
-    lines.forEach(line => {
-        if (line.length === 0) { cursorY += lhPx; return; }
-        const textContent = line.map(n => n.originalChar).join('');
-        let isRtlBase = false;
-        for (const char of textContent) {
-            if (/[\u0590-\u08FF\uFB1D-\uFDFD\uFE70-\uFEFC]/.test(char)) { isRtlBase = true; break; }
-            if (/[A-Za-z]/.test(char)) { isRtlBase = false; break; }
-        }
-        const visualLine = resolveBiDiOrder(line, isRtlBase);
-        let totalW = 0;
-        visualLine.forEach(node => {
-            const char = node.originalChar; 
-            const widthTags = app.lockLayout ? [] : (node.activeTag ? [node.activeTag] : []);
-            node.width = getGlyphWidth(char, widthTags);
-            totalW += node.width + (app.fontSize * app.tracking) + (node.marginLeft + node.marginRight) * app.fontSize;
-        });
-        if(visualLine.length) totalW -= (app.fontSize * app.tracking);
-        let cursorX = (w / 2) - (totalW / 2);
-        visualLine.forEach((node) => {
-            const char = node.originalChar; 
-            const tags = node.activeTag ? [node.activeTag] : [];
-            ctx.save();
-            ctx.canvas.style.fontFeatureSettings = tags.length > 0 ? tags.map(t => `"${t}" 1`).join(', ') : "normal";
-            ctx.font = `${app.fontSize}px ${FONT_NAME}`;
-            ctx.fillStyle = app.textColor;
-            ctx.textAlign = "center";
-            let slotCenter = cursorX + (node.marginLeft * app.fontSize) + (node.width / 2);
-            
-            node.hitX = cursorX;
-            node.hitY = cursorY - app.fontSize;
-            node.hitW = node.width + (node.marginLeft + node.marginRight) * app.fontSize;
-            node.hitH = app.fontSize * 1.2;
+}
 
-            ctx.fillText(char, slotCenter, cursorY);
-            if (app.selectionIndex === app.nodes.indexOf(node)) {
-                ctx.strokeStyle = getComputedStyle(document.body).getPropertyValue('--selection');
-                ctx.lineWidth = 3; ctx.setLineDash([6, 4]);
-                let boxX = cursorX + (node.marginLeft * app.fontSize);
-                ctx.strokeRect(boxX - 4, cursorY - app.fontSize - 4, node.width + 8, app.fontSize + 8);
-            }
-            cursorX += (node.marginLeft * app.fontSize) + node.width + (app.fontSize * app.tracking) + (node.marginRight * app.fontSize);
-            ctx.restore();
-        });
-        cursorY += lhPx;
+function finalizeZip() {
+    dom.recStatus.textContent = "ZIPPING...";
+    dom.zipProgressWrapper.style.display = "block";
+    const zip = new JSZip();
+    app.sequenceFrames.forEach((b, i) => zip.file(`frame_${i}.png`, b));
+    zip.generateAsync({type:"blob"}, m => dom.zipBar.style.width = m.percent+"%").then(c => {
+        saveAs(c, "sequence.zip");
+        dom.zipProgressWrapper.style.display = "none";
     });
 }
 
 function loop(t) {
     requestAnimationFrame(loop);
-    const interval = 1000 / app.fps;
-    const delta = t - app.lastTime;
-    if(delta > interval) {
-        app.lastTime = t - (delta % interval);
-        if(app.isPlaying) step();
-        render(); 
-        if(app.isRecording && (app.exportFormat === 'zip' || app.exportFormat === 'mov')) captureZipFrame();
+    if(t - app.lastTime < (1000/app.fps)) return;
+    app.lastTime = t;
+    
+    const ctx = dom.ctx;
+    ctx.clearRect(0,0,app.width,app.height);
+    ctx.font = `${app.fontSize}px ${FONT_NAME}`;
+    ctx.fillStyle = app.textColor;
+    ctx.textAlign = "center";
+    ctx.fillText(app.rawText, app.width/2, app.height/2);
+
+    if (app.isRecording) {
+        dom.canvas.toBlob(b => app.sequenceFrames.push(b));
+        dom.recStatus.textContent = `CAPTURED: ${app.sequenceFrames.length}`;
     }
 }
 
-function step() {
-    let glitchedNodes = app.nodes.filter(n => n.activeTag !== null && !n.locked);
-    
-    app.nodes.forEach(node => {
-        if(node.locked || node.originalChar === '\n' || !node.originalChar.trim()) return;
-        
-        const pool = node.glyphPool || [null]; 
-        
-        if (!pool.includes(node.activeTag)) { 
-            node.activeTag = pool[0]; 
-            node.timer = 0; 
-            return; 
-        }
+function setFormat(f) { app.exportFormat = f; }
+function setBgMode(m) { app.bgMode = m; document.getElementById('canvas-wrapper').className = m === 'transparent' ? 'transparent-bg' : ''; }
 
-        node.timer++;
-
-        if(node.timer > app.minDuration) {
-            const roll = Math.random();
-
-            if (node.activeTag !== null) {
-                const overLimit = glitchedNodes.length > app.maxConcurrent;
-                if (overLimit || roll > 0.3) {
-                    node.activeTag = null;
-                    node.timer = 0;
-                    glitchedNodes = glitchedNodes.filter(n => n !== node);
-                } else {
-                    node.activeTag = pool[Math.floor(Math.random() * pool.length)];
-                    node.timer = 0;
-                }
-            } else {
-                if (glitchedNodes.length < app.maxConcurrent) {
-                    if (roll < app.probability) {
-                        const activeOptions = pool.filter(t => t !== null);
-                        if (activeOptions.length > 0) {
-                            node.activeTag = activeOptions[Math.floor(Math.random() * activeOptions.length)];
-                            node.timer = 0;
-                            glitchedNodes.push(node);
-                        }
-                    }
-                }
-            }
-        }
-    });
-}
-
-dom.canvas.addEventListener('mousedown', (e) => {
-    if(Tutorial.active) return;
-    const rect = dom.canvas.getBoundingClientRect();
-    const scaleX = app.width / rect.width;
-    const scaleY = app.height / rect.height;
-    const mx = (e.clientX - rect.left) * scaleX;
-    const my = (e.clientY - rect.top) * scaleY;
-    const hit = app.nodes.findIndex(n => mx >= n.hitX && mx <= n.hitX + n.hitW && my >= n.hitY && my <= n.hitY + n.hitH);
-    hit > -1 ? selectNode(hit) : deselect();
-});
-
-function updateActiveSwatches() {
-    const textSwatches = document.querySelectorAll('#gridTextColor .swatch');
-    textSwatches.forEach(s => {
-        s.classList.remove('active');
-        const col = s.dataset.color?.toLowerCase();
-        if(col === app.textColor.toLowerCase()) s.classList.add('active');
-    });
-
-    const bgSwatches = document.querySelectorAll('#gridBgColor .swatch');
-    const transSwatch = document.getElementById('bgSwatchTrans');
-    bgSwatches.forEach(s => {
-        s.classList.remove('active');
-        const col = s.dataset.color?.toLowerCase();
-        if(app.bgMode === 'color' && col === app.bgColor.toLowerCase()) s.classList.add('active');
-    });
-    
-    transSwatch.classList.remove('active');
-    if(app.bgMode === 'transparent') transSwatch.classList.add('active');
-}
-
-function getContrastColor(hex) {
-    const upper = hex.toUpperCase();
-    return (upper === '#FFFFFF' || upper === '#DFF946') ? '#000000' : '#FFFFFF';
-}
-
-function setBgMode(mode, val) {
-    app.bgMode = mode;
-    if(mode === 'color') { 
-        const newBg = (val || dom.inpBgColor.value).toUpperCase();
-        if(newBg === app.textColor.toUpperCase()) {
-            app.textColor = getContrastColor(newBg);
-            dom.inpColor.value = app.textColor;
-        }
-        app.bgColor = newBg;
-        if(!val) setTimeout(() => dom.inpBgColor.click(), 50);
-    }
-    updateActiveSwatches();
-    render();
-}
-
-function setColor(hex) { 
-    const newText = hex.toUpperCase();
-    if(app.bgMode === 'color' && newText === app.bgColor.toUpperCase()) {
-        app.bgColor = getContrastColor(newText);
-        dom.inpBgColor.value = app.bgColor;
-    }
-    app.textColor = newText; 
-    dom.inpColor.value = newText; 
-    updateActiveSwatches(); 
-    render(); 
-}
-
-function setExportFormat(fmt) {
-    app.exportFormat = fmt;
-    document.getElementById('btnFmtZip').classList.toggle('active', fmt === 'zip');
-    document.getElementById('btnFmtMov').classList.toggle('active', fmt === 'mov');
-    
-    // Both ZIP and MOV support alpha
-    document.getElementById('bgSwatchTrans').classList.remove('disabled');
-    
-    updateRecordButton();
-    if(fmt === 'mov') initFFmpeg(); // Preload engine
-}
-
-function updateRecordButton() {
-    const btn = dom.btnRecord; 
-    const isZip = app.exportFormat === 'zip';
-    if(!app.isRecording) {
-        btn.innerHTML = `<i data-lucide="${isZip ? 'images' : 'film'}" class="icon-sm"></i> ${isZip ? 'REC SEQUENCE' : 'REC PRORES'}`;
-        btn.classList.remove('recording'); dom.recStatus.textContent = "";
-    } else { btn.innerHTML = `<i data-lucide="square" class="icon-sm"></i> STOP RECORDING`; btn.classList.add('recording'); }
-    lucide.createIcons();
-}
-
-function toggleRecording() { app.isRecording ? stopRecording() : startRecording(); }
-function startRecording() {
-    app.isRecording = true; updateRecordButton();
-    // Reset buffers for both formats
-    app.sequenceFrames = []; 
-    dom.recStatus.textContent = "CAPTURING...";
-}
-function stopRecording() {
-    app.isRecording = false; updateRecordButton();
-    if (app.exportFormat === 'zip') finalizeZip();
-    else if (app.exportFormat === 'mov') renderProRes();
-}
-
-function captureZipFrame() {
-    dom.canvas.toBlob(b => {
-        if(!app.isRecording) return;
-        app.sequenceFrames.push(b);
-        dom.recStatus.textContent = `FRAMES: ${app.sequenceFrames.length}`;
-        if(app.sequenceFrames.length >= app.sequenceLimit) { stopRecording(); alert(`Limit reached (${app.sequenceLimit}). Saving...`); }
-    }, 'image/png');
-}
-
-function finalizeZip() {
-    dom.recStatus.textContent = "COMPRESSING..."; dom.zipProgressWrapper.style.display = "block";
-    const zip = new JSZip(); const f = zip.folder("sequence");
-    app.sequenceFrames.forEach((b, i) => f.file(`frame_${String(i).padStart(4,'0')}.png`, b));
-    zip.generateAsync({type:"blob"}, m => dom.zipBar.style.width = m.percent+"%").then(c => {
-        saveAs(c, `Firma_Seq_${Date.now()}.zip`); dom.recStatus.textContent = "DONE";
-        setTimeout(() => { dom.recStatus.textContent = ""; dom.zipProgressWrapper.style.display = "none"; dom.zipBar.style.width = "0%"; }, 2000);
-    });
-}
-
-function buildGlyphGrid(node) {
-    dom.glyphGrid.innerHTML = ''; const char = node.override || node.originalChar;
-    const tags = app.charMap[char] || []; const allOptions = [null, ...tags];
-    if(allOptions.length === 1) { dom.glyphGrid.innerHTML = `<div style="grid-column:1/-1; text-align:center; color:#555; padding:10px;">NO ALTERNATES</div>`; return; }
-    allOptions.forEach(tag => {
-        const btn = document.createElement('div'); const isActive = node.glyphPool.includes(tag);
-        btn.className = `glyph-option ${isActive ? 'active' : ''}`;
-        const previewChar = char; const style = tag ? `font-feature-settings:'${tag}' 1` : `font-feature-settings: normal`;
-        const label = tag ? tag.replace('ss', '') : 'BASE';
-        btn.innerHTML = `<span class="glyph-preview" style="${style}">${previewChar}</span><span class="glyph-label">${label}</span>`;
-        btn.onclick = () => {
-            if (node.glyphPool.includes(tag)) { if (node.glyphPool.length > 1) node.glyphPool = node.glyphPool.filter(t => t !== tag); }
-            else { node.glyphPool.push(tag); }
-            buildGlyphGrid(node); if(node.activeTag === tag && !node.glyphPool.includes(tag)) node.activeTag = node.glyphPool[0]; render();
-        };
-        dom.glyphGrid.appendChild(btn);
-    });
-}
-
-function selectNode(i) {
-    app.selectionIndex = i; const n = app.nodes[i];
-    document.body.classList.add('has-selection'); dom.inspCharDisplay.textContent = n.originalChar;
-    dom.inspIndex.textContent = `INDEX #${i}`;
-    dom.slML.value = n.marginLeft; dom.numML.value = n.marginLeft; dom.slMR.value = n.marginRight; dom.numMR.value = n.marginRight;
-    updateLockBtn(n.locked); buildGlyphGrid(n); render();
-}
-function deselect() { app.selectionIndex = -1; document.body.classList.remove('has-selection'); render(); }
-function updateLockBtn(locked) {
-    dom.btnLock.innerHTML = `<i data-lucide="${locked?'unlock':'lock'}" class="icon-sm"></i> ${locked?"UNLOCK":"LOCK"}`;
-    dom.btnLock.classList.toggle('btn-primary', locked); lucide.createIcons();
-}
-
-function setupControls() {
-    dom.input.oninput = e => { app.rawText = e.target.value; syncText(); };
-    dom.inpColor.oninput = e => { setColor(e.target.value); };
-    dom.inpBgColor.oninput = e => { setBgMode('color', e.target.value); };
-    const bind = (k, sl, num, sc=1) => {
-        const s = document.getElementById(sl), n = document.getElementById(num);
-        s.oninput = e => { app[k] = parseFloat(e.target.value)*sc; if(n.type==='number') n.value = app[k]/sc; else n.value=e.target.value; app.widthCache={}; render(); };
-        if(n.type==='number') n.onchange = e => { app[k] = parseFloat(e.target.value)*sc; s.value = app[k]/sc; app.widthCache={}; render(); };
-    };
-    bind('fontSize', 'slSize', 'numSize'); bind('lineHeight', 'slLH', 'numLH');
-    bind('tracking', 'slTrack', 'numTrack'); bind('fps', 'slFps', 'numFps');
-    bind('probability', 'slProb', 'numProb', 0.01); bind('minDuration', 'slDur', 'numDur');
-    bind('maxConcurrent', 'slMax', 'numMax');
-    
-    document.getElementById('btnResetEngine').onclick = () => {
-        const defaults = { fps: 24, maxConcurrent: 3, probability: 0.4, minDuration: 8 };
-        Object.assign(app, defaults);
-        document.getElementById('slFps').value = defaults.fps; document.getElementById('numFps').value = defaults.fps;
-        document.getElementById('slMax').value = defaults.maxConcurrent; document.getElementById('numMax').value = defaults.maxConcurrent;
-        document.getElementById('slProb').value = defaults.probability * 100; document.getElementById('numProb').value = defaults.probability * 100;
-        document.getElementById('slDur').value = defaults.minDuration; document.getElementById('numDur').value = defaults.minDuration;
-        render();
-    };
-
-    const setupSpacing = (slId, numId, prop) => {
-        const sl = document.getElementById(slId), num = document.getElementById(numId);
-        const h = v => { if(app.selectionIndex > -1) app.nodes[app.selectionIndex][prop] = v; };
-        sl.oninput = e => { const v=parseFloat(e.target.value); num.value=v; h(v); };
-        num.onchange = e => { const v=parseFloat(e.target.value); sl.value=v; h(v); };
-    };
-    setupSpacing('slML', 'numML', 'marginLeft'); setupSpacing('slMR', 'numMR', 'marginRight');
-    dom.chkLockLayout.onchange = (e) => { app.lockLayout = e.target.checked; app.widthCache = {}; render(); };
-    
-    dom.selResolution.onchange = e => {
-        const p = e.target.value.split(','); app.width=parseInt(p[0]); app.height=parseInt(p[1]);
-        dom.canvas.width=app.width; dom.canvas.height=app.height; app.widthCache={}; handleResize(); render();
-    };
-    dom.btnRecord.onclick = toggleRecording;
-    dom.btnLock.onclick = () => { if(app.selectionIndex > -1) { const n=app.nodes[app.selectionIndex]; n.locked=!n.locked; updateLockBtn(n.locked); } };
-    document.getElementById('btnCloseInsp').onclick = deselect;
-    dom.btnApplyAll.onclick = () => {
-        if(app.selectionIndex === -1) return;
-        const sourceNode = app.nodes[app.selectionIndex]; const targetChar = sourceNode.originalChar;
-        app.charSettings[targetChar] = [...sourceNode.glyphPool];
-        app.nodes.forEach(n => { if(n.originalChar === targetChar) { n.glyphPool = [...sourceNode.glyphPool]; if (!n.glyphPool.includes(n.activeTag)) { n.activeTag = n.glyphPool[0]; n.timer = 0; } } });
-        render();
-    };
-    document.querySelectorAll('.num-input').forEach(i => i.onclick = function(){this.select()});
-}
+dom.input.oninput = e => { app.rawText = e.target.value; syncText(); };
 
 init();
 </script>
