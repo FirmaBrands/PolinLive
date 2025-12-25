@@ -1601,7 +1601,9 @@
                     '-i', 'frame_%04d.png',
                     '-c:v', 'prores_ks',
                     '-profile:v', '4444',
-                    '-vf', 'format=yuva444p10le,setsar=1',
+                    '-vf', 'format=rgba,format=yuva444p10le,setsar=1',
+                    '-vtag', 'ap4h',
+                    '-bits_per_mb', '8000',
                     '-y',
                     'output.mov'
                 );
