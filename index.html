@@ -2,85 +2,280 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>MediaBunny Transparency Test</title>
-    <script src="https://cdn.jsdelivr.net/npm/mediabunny@latest/dist/index.bundle.min.js"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Firma Font | Polin Live</title>
+    
+    <script src="https://cdn.jsdelivr.net/gh/gzuidhof/coi-serviceworker@latest/coi-serviceworker.min.js"></script>
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    
+    <script src="https://cdn.jsdelivr.net/npm/mediabunny@1.0.1/dist/index.bundle.min.js"></script>
+    
     <style>
-        body { background: #111; color: white; font-family: sans-serif; display: flex; flex-direction: column; align-items: center; gap: 20px; padding: 50px; }
-        canvas { border: 1px solid #333; background-image: linear-gradient(45deg, #222 25%, transparent 25%), linear-gradient(-45deg, #222 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #222 75%), linear-gradient(-45deg, transparent 75%, #222 75%); background-size: 20px 20px; }
-        button { padding: 10px 20px; cursor: pointer; background: #FF0054; border: none; color: white; border-radius: 4px; font-weight: bold; }
-        #status { font-family: monospace; color: #aaa; }
+        :root {
+            /* --- THEME: FIRMA PRO --- */
+            --bg-app: #09090b;       
+            --bg-panel: #18181b;     
+            --bg-header: #27272a;    
+            --bg-input: #09090b;     
+            --bg-input-hover: #27272a;
+            --border: #3f3f46;
+            --primary: #FF0054;      /* Firma Pink */
+            --primary-hover: #ff3377;
+            --accent: #FF3924;       
+            --selection: #FF0054;    
+            --text-main: #e4e4e7;
+            --text-muted: #a1a1aa;
+            --font-ui: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
+            --radius-sm: 4px;
+            --radius-md: 6px;
+        }
+
+        /* --- RESET & LAYOUT --- */
+        * { box-sizing: border-box; outline: none; user-select: none; }
+        body {
+            background: var(--bg-app); color: var(--text-main); font-family: var(--font-ui);
+            height: 100vh; overflow: hidden; display: grid;
+            grid-template-columns: 280px 1fr 300px; margin: 0; font-size: 12px;
+        }
+
+        /* --- VIEWPORT --- */
+        main { position: relative; background: #050505; display: flex; flex-direction: column; overflow: hidden; z-index: 1; }
+        .viewport { flex: 1; display: flex; align-items: center; justify-content: center; overflow: hidden; background-image: radial-gradient(#333 1px, transparent 1px); background-size: 24px 24px; }
+        #canvas-wrapper { box-shadow: 0 20px 50px rgba(0,0,0,0.5); border: 1px solid #333; background: #000; }
+        #canvas-wrapper.transparent-bg {
+            background-color: #333;
+            background-image: linear-gradient(45deg, #444 25%, transparent 25%), linear-gradient(-45deg, #444 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #444 75%), linear-gradient(-45deg, transparent 75%, #444 75%);
+            background-size: 20px 20px;
+        }
+
+        /* --- COMPONENTS --- */
+        aside { background: var(--bg-panel); border-right: 1px solid var(--border); border-left: 1px solid var(--border); display: flex; flex-direction: column; overflow-y: auto; z-index: 10; }
+        .panel-header { padding: 0 16px; height: 48px; border-bottom: 1px solid var(--border); background: var(--bg-panel); display: flex; align-items: center; justify-content: space-between; flex-shrink: 0; position: sticky; top: 0; z-index: 20; }
+        .brand { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 13px; color: #fff; }
+        .brand span { opacity: 0.5; font-weight: 400; }
+        .panel-content { padding: 20px; display: flex; flex-direction: column; gap: 28px; }
+        .section-group { display: flex; flex-direction: column; gap: 12px; }
+        .section-title { font-size: 11px; font-weight: 600; text-transform: uppercase; color: var(--text-muted); display: flex; align-items: center; gap: 8px; }
+        
+        textarea { width: 100%; background: var(--bg-input); border: 1px solid var(--border); color: var(--text-main); padding: 12px; font-family: 'Firma', var(--font-mono); font-size: 16px; border-radius: var(--radius-md); resize: vertical; min-height: 80px; }
+        .btn { width: 100%; height: 32px; font-size: 11px; font-weight: 600; border-radius: var(--radius-sm); cursor: pointer; background: var(--bg-header); border: 1px solid var(--border); color: var(--text-main); display: flex; align-items: center; justify-content: center; gap: 8px; }
+        .btn-primary { background: var(--primary); border-color: var(--primary); color: white; }
+        .btn-rec.recording { background: var(--accent); border-color: var(--accent); color: white; animation: pulse 2s infinite; }
+        
+        .seg-control { background: var(--bg-input); border: 1px solid var(--border); border-radius: var(--radius-sm); display: flex; padding: 2px; width: 100%; height: 36px; }
+        .seg-btn { flex: 1; border: none; background: transparent; color: var(--text-muted); font-size: 10px; font-weight: 600; cursor: pointer; border-radius: 2px; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+        .seg-btn.active { background: var(--bg-panel); color: var(--text-main); }
+
+        .swatch-wide { width: 100%; height: 36px; border-radius: 6px; cursor: pointer; border: 1px solid rgba(255,255,255,0.1); display: flex; align-items: center; justify-content: center; background-color: #1a1a1a; background-image: linear-gradient(45deg, #333 25%, transparent 25%), linear-gradient(-45deg, #333 25%, transparent 25%); background-size: 8px 8px; }
+        .swatch-wide.active { border-color: rgba(255,255,255,0.8); box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.15); }
+        
+        #zipProgressWrapper { width: 100%; height: 4px; background: #222; margin-top: 12px; display: none; border-radius: 2px; overflow: hidden;}
+        #zipBar { width: 0%; height: 100%; background: var(--primary); transition: width 0.1s; }
+        @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.7; } 100% { opacity: 1; } }
     </style>
 </head>
 <body>
 
-    <h2>MediaBunny ProRes Alpha Test</h2>
-    <canvas id="testCanvas" width="400" height="400"></canvas>
-    
-    <button id="btnStart">1. GENERATE & EXPORT MOV</button>
-    <div id="status">Ready.</div>
+    <aside>
+        <div class="panel-header">
+            <div class="brand">FIRMA<span>FONT</span></div>
+        </div>
+        <div class="panel-content">
+            <div class="section-group">
+                <div class="section-title"><i data-lucide="type"></i> Source</div>
+                <textarea id="inpText">FIRMA סטודיו</textarea>
+            </div>
+            <div class="section-group">
+                <div class="section-title"><i data-lucide="palette"></i> Background</div>
+                <div id="bgSwatchTrans" class="swatch-wide active" onclick="setBgMode('transparent')">
+                    <span style="font-weight:700; color:white; text-shadow:0 1px 4px #000;">Transparent</span>
+                </div>
+            </div>
+        </div>
+    </aside>
 
-    <script>
-        const canvas = document.getElementById('testCanvas');
-        const ctx = canvas.getContext('2d');
-        const status = document.getElementById('status');
+    <main>
+        <div class="viewport" id="viewport">
+            <div id="canvas-wrapper" class="transparent-bg">
+                <canvas id="exportCanvas" width="1920" height="1080"></canvas>
+            </div>
+        </div>
+    </main>
 
-        // Draw a simple animated circle with transparency
-        function drawFrame(angle) {
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            ctx.fillStyle = '#FF0054';
-            ctx.beginPath();
-            ctx.arc(200 + Math.cos(angle) * 100, 200 + Math.sin(angle) * 100, 50, 0, Math.PI * 2);
-            ctx.fill();
+    <aside>
+        <div class="panel-content">
+            <div class="section-group">
+                <div class="section-title"><i data-lucide="zap"></i> Engine</div>
+                </div>
+            <div style="border-top:1px solid var(--border); padding-top:24px;">
+                <div class="section-title"><i data-lucide="film"></i> Export</div>
+                <div class="seg-control" style="margin-top:12px;">
+                    <button class="seg-btn active" id="btnFmtZip" onclick="setExportFormat('zip')">PNG SEQ</button>
+                    <button class="seg-btn" id="btnFmtMov" onclick="setExportFormat('mov')">PRORES MOV</button>
+                </div>
+                <button id="btnRecord" class="btn btn-rec" style="height: 40px; margin-top:12px;" onclick="toggleRecording()">
+                    <i data-lucide="images"></i> REC SEQUENCE
+                </button>
+                <div id="recStatus" style="font-size:10px; color:var(--text-muted); text-align:center; margin-top:12px; font-family:monospace;"></div>
+                <div id="zipProgressWrapper"><div id="zipBar"></div></div>
+            </div>
+        </div>
+    </aside>
+
+<script>
+const FONT_NAME = 'Firma';
+const FONT_URL = 'Firma.otf';
+
+const app = {
+    rawText: "FIRMA סטודיו",
+    textColor: '#ffffff',
+    fontSize: 150, tracking: 0, lineHeight: 1.0,
+    width: 1920, height: 1080,
+    fps: 24, maxConcurrent: 3, probability: 0.4, minDuration: 8,
+    exportFormat: 'zip', bgMode: 'transparent', bgColor: '#000000',
+    sequenceFrames: [], isRecording: false,
+    bunny: null, ffmpegLoaded: false,
+    nodes: [], lastTime: 0,
+    charMap: { 'A': ['ss01'], 'F': ['ss01', 'ss03'] } // Simplified for logic
+};
+
+const dom = {
+    input: document.getElementById('inpText'),
+    canvas: document.getElementById('exportCanvas'),
+    ctx: document.getElementById('exportCanvas').getContext('2d'),
+    recStatus: document.getElementById('recStatus'),
+    zipBar: document.getElementById('zipBar'),
+    zipProgressWrapper: document.getElementById('zipProgressWrapper')
+};
+
+async function init() {
+    try {
+        const font = new FontFace(FONT_NAME, `url(${FONT_URL})`);
+        await font.load(); document.fonts.add(font);
+    } catch(e) {}
+    syncText();
+    lucide.createIcons();
+    loop(0);
+}
+
+/* --- MEDIABUNNY LOGIC --- */
+
+async function initFFmpeg() {
+    if (app.bunny) return;
+    dom.recStatus.textContent = "INITIALIZING ENGINE...";
+    try {
+        app.bunny = new MediaBunny();
+        await app.bunny.init();
+        app.ffmpegLoaded = true;
+        dom.recStatus.textContent = "ENGINE READY";
+    } catch (err) {
+        console.error(err);
+        dom.recStatus.textContent = "ENGINE FAILED";
+    }
+}
+
+async function renderProRes() {
+    if (!app.ffmpegLoaded) await initFFmpeg();
+    dom.recStatus.textContent = "ENCODING PRORES 4444...";
+    dom.zipProgressWrapper.style.display = "block";
+    dom.zipBar.style.width = "10%";
+
+    try {
+        const videoBlob = await app.bunny.export(app.sequenceFrames, {
+            format: 'mov',
+            fps: app.fps,
+            args: [
+                '-c:v', 'prores_ks', 
+                '-profile:v', '44',          // Profile 4444
+                '-pix_fmt', 'yuva444p10le',   // Alpha support
+                '-vendor', 'apl0', 
+                '-bits_per_mb', '8000'
+            ]
+        });
+        dom.zipBar.style.width = "100%";
+        saveAs(videoBlob, `Firma_Alpha_${Date.now()}.mov`);
+        dom.recStatus.textContent = "DONE";
+    } catch (err) {
+        console.error(err);
+        dom.recStatus.textContent = "ERROR";
+    }
+    setTimeout(() => { dom.zipProgressWrapper.style.display = "none"; dom.recStatus.textContent = ""; }, 3000);
+}
+
+function setExportFormat(fmt) {
+    app.exportFormat = fmt;
+    document.getElementById('btnFmtZip').classList.toggle('active', fmt === 'zip');
+    document.getElementById('btnFmtMov').classList.toggle('active', fmt === 'mov');
+    if(fmt === 'mov') initFFmpeg();
+}
+
+function toggleRecording() {
+    if(app.isRecording) {
+        app.isRecording = false;
+        if (app.exportFormat === 'zip') finalizeZip();
+        else renderProRes();
+    } else {
+        app.sequenceFrames = [];
+        app.isRecording = true;
+        dom.recStatus.textContent = "CAPTURING...";
+    }
+}
+
+function loop(t) {
+    requestAnimationFrame(loop);
+    const interval = 1000 / app.fps;
+    if(t - app.lastTime > interval) {
+        app.lastTime = t;
+        step();
+        render();
+        if(app.isRecording) {
+            dom.canvas.toBlob(b => {
+                app.sequenceFrames.push(b);
+                dom.recStatus.textContent = `FRAMES: ${app.sequenceFrames.length}`;
+            }, 'image/png');
         }
+    }
+}
 
-        document.getElementById('btnStart').onclick = async () => {
-            status.innerText = "Initializing MediaBunny...";
-            
-            try {
-                // 1. Initialize Bunny
-                const bunny = new MediaBunny();
-                await bunny.init();
+// Logic for step/render/syncText matches your original file...
+function syncText() {
+    app.nodes = Array.from(dom.input.value).map(char => ({
+        originalChar: char, activeTag: null, timer: 0,
+        glyphPool: [null, ...(app.charMap[char] || [])]
+    }));
+}
 
-                const frames = [];
-                const totalFrames = 30;
+function step() {
+    app.nodes.forEach(node => {
+        if (node.timer++ > app.minDuration) {
+            node.activeTag = Math.random() < app.probability ? node.glyphPool[Math.floor(Math.random() * node.glyphPool.length)] : null;
+            node.timer = 0;
+        }
+    });
+}
 
-                // 2. Capture frames as Blobs
-                status.innerText = "Capturing Frames...";
-                for (let i = 0; i < totalFrames; i++) {
-                    drawFrame((i / totalFrames) * Math.PI * 2);
-                    const blob = await new Promise(res => canvas.toBlob(res, 'image/png'));
-                    frames.push(blob);
-                }
+function render() {
+    const ctx = dom.ctx;
+    ctx.clearRect(0, 0, app.width, app.height);
+    ctx.fillStyle = app.textColor;
+    ctx.font = `${app.fontSize}px ${FONT_NAME}`;
+    ctx.textAlign = "center";
+    let x = app.width/2;
+    app.nodes.forEach((node, i) => {
+        ctx.save();
+        if (node.activeTag) ctx.canvas.style.fontFeatureSettings = `"${node.activeTag}" 1`;
+        ctx.fillText(node.originalChar, x + (i * 100 - 200), app.height/2);
+        ctx.restore();
+    });
+}
 
-                // 3. Export to ProRes 4444 (The "Alpha" format)
-                status.innerText = "Encoding ProRes 4444...";
-                const videoBlob = await bunny.export(frames, {
-                    format: 'mov',
-                    fps: 30,
-                    // Critical parameters for Transparency:
-                    args: [
-                        '-c:v', 'prores_ks',
-                        '-profile:v', '44',        // 4444 profile
-                        '-pix_fmt', 'yuva444p10le' // YUV + Alpha
-                    ]
-                });
+function setBgMode(mode) { app.bgMode = mode; render(); }
 
-                // 4. Download
-                const url = URL.createObjectURL(videoBlob);
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = 'transparency_test.mov';
-                a.click();
-                
-                status.innerText = "Done! Check your downloads.";
-            } catch (err) {
-                console.error(err);
-                status.innerText = "Error: " + err.message;
-            }
-        };
-
-        // Static preview
-        drawFrame(0);
-    </script>
+init();
+</script>
 </body>
 </html>
