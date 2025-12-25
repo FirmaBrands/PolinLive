@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Firma Alpha Pro | Polin Live</title>
+    <title>Fir1ma Font | Polin Live</title>
     
     <script src="coi-serviceworker.min.js"></script>
     
@@ -16,7 +16,7 @@
     <style>
         :root {
             --bg-app: #09090b; --bg-panel: #18181b; --bg-header: #27272a; --bg-input: #09090b;
-            --border: #3f3f46; --primary: #FF0054; --text-main: #e4e4e7;
+            --border: #3f3f46; --primary: #FF0054; --text-main: #e4e4e7; --text-muted: #a1a1aa;
             --font-ui: 'Inter', sans-serif; --font-mono: 'JetBrains Mono', monospace;
         }
         * { box-sizing: border-box; outline: none; user-select: none; }
@@ -25,18 +25,21 @@
         aside { background: var(--bg-panel); border-left: 1px solid var(--border); border-right: 1px solid var(--border); display: flex; flex-direction: column; z-index: 10; }
         .panel-header { height: 48px; border-bottom: 1px solid var(--border); display: flex; align-items: center; padding: 0 16px; background: var(--bg-panel); font-weight: 700; color: #fff; }
         .panel-content { padding: 20px; display: flex; flex-direction: column; gap: 20px; overflow-y: auto; }
-        .section-title { font-size: 11px; font-weight: 600; text-transform: uppercase; margin-bottom: 8px; color: #888; }
+        .section-title { font-size: 11px; font-weight: 600; text-transform: uppercase; color: var(--text-muted); margin-bottom: 8px; display: flex; gap: 8px; align-items: center; }
         
-        textarea { width: 100%; background: var(--bg-input); border: 1px solid var(--border); color: #fff; padding: 12px; font-family: 'Firma', var(--font-mono); font-size: 24px; border-radius: 6px; resize: vertical; min-height: 80px; }
-
-        /* THE STAGE */
-        main { position: relative; background: #000; display: flex; align-items: center; justify-content: center; overflow: hidden; }
+        textarea { width: 100%; background: var(--bg-input); border: 1px solid var(--border); color: var(--text-main); padding: 12px; font-family: 'Firma', var(--font-mono); font-size: 24px; border-radius: 6px; resize: vertical; min-height: 80px; }
         
-        /* The Wrapper handles the visual background (Checkerboard/Green) */
+        main { position: relative; background: #050505; display: flex; align-items: center; justify-content: center; overflow: hidden; }
+        .viewport { flex: 1; display: flex; align-items: center; justify-content: center; background-image: radial-gradient(#333 1px, transparent 1px); background-size: 24px 24px; width: 100%; height: 100%; }
+        
         #canvas-wrapper { 
             box-shadow: 0 20px 50px rgba(0,0,0,0.5); 
             border: 1px solid #333; 
-            /* Default to checkerboard so you know it's transparent */
+            background: #000; 
+            transition: background 0.2s;
+        }
+        
+        #canvas-wrapper.transparent-bg {
             background-color: #222;
             background-image: 
                 linear-gradient(45deg, #333 25%, transparent 25%), 
@@ -45,20 +48,19 @@
                 linear-gradient(-45deg, transparent 75%, #333 75%);
             background-size: 20px 20px;
         }
-        
-        /* Green Screen Mode for verification */
-        #canvas-wrapper.green-bg {
-            background: #00FF00 !important;
-            background-image: none !important;
-        }
 
-        .btn { width: 100%; height: 32px; cursor: pointer; background: var(--bg-header); border: 1px solid var(--border); color: #fff; border-radius: 4px; display: flex; align-items: center; justify-content: center; gap: 8px; font-weight: 600; font-size: 11px; transition: 0.2s; }
+        .btn { width: 100%; height: 32px; cursor: pointer; background: var(--bg-header); border: 1px solid var(--border); color: var(--text-main); border-radius: 4px; display: flex; align-items: center; justify-content: center; gap: 8px; font-weight: 600; font-size: 11px; transition: 0.2s; }
         .btn:hover { background: #333; }
-        .btn-rec.recording { background: #FF3924; animation: pulse 2s infinite; border-color: #FF3924; }
+        .btn.active { background: var(--primary); border-color: var(--primary); color: white; }
+        .btn-rec.recording { background: #FF3924; color: white; border-color: #FF3924; animation: pulse 2s infinite; }
         
-        #recStatus { text-align: center; margin-top: 10px; font-family: var(--font-mono); font-size: 10px; color: #888; white-space: pre-wrap; }
-        #zipBar { width: 0%; height: 4px; background: var(--primary); margin-top: 8px; transition: width 0.1s; }
+        #recStatus { text-align: center; margin-top: 10px; font-family: var(--font-mono); font-size: 10px; color: var(--text-muted); min-height: 14px; white-space: pre-wrap; }
+        #zipProgressWrapper { width: 100%; height: 4px; background: #222; margin-top: 8px; display: none; border-radius: 2px; }
+        #zipBar { width: 0%; height: 100%; background: var(--primary); transition: width 0.1s; }
+        
         @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.7; } 100% { opacity: 1; } }
+        
+        .color-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
     </style>
 </head>
 <body>
@@ -67,27 +69,28 @@
         <div class="panel-header">FIRMA FONT</div>
         <div class="panel-content">
             <div>
-                <div class="section-title">Source</div>
+                <div class="section-title"><i data-lucide="type" width="14"></i> Source</div>
                 <textarea id="inpText">FIRMA סטודיו</textarea>
             </div>
             
             <div>
-                 <div class="section-title">Verify Transparency</div>
-                 <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
-                     <button class="btn" onclick="toggleBg(false)">Checkerboard</button>
-                     <button class="btn" onclick="toggleBg(true)" style="background:#004400; color:#4f4;">Green Screen</button>
+                 <div class="section-title"><i data-lucide="palette" width="14"></i> Background</div>
+                 <div class="color-row">
+                     <button class="btn active" id="btnBgTrans" onclick="setBg('transparent')">Transparent</button>
+                     <button class="btn" id="btnBgBlack" onclick="setBg('black')">Black</button>
                  </div>
-                 <p style="font-size:10px; color:#666; margin-top:8px; line-height:1.4;">
-                     If you see the checkerboard or green through the text, the file <b>will</b> have an alpha channel. <br><br>
-                     <span style="color:#FF3924;">Note: Video players (QuickTime/VLC) will show black. Import to After Effects to see transparency.</span>
-                 </p>
+                 <div style="font-size:10px; color:#666; margin-top:6px; line-height:1.4;">
+                     * Use "Transparent" for Alpha export.
+                 </div>
             </div>
         </div>
     </aside>
 
     <main>
-        <div id="canvas-wrapper">
-            <canvas id="exportCanvas" width="1920" height="1080"></canvas>
+        <div class="viewport">
+            <div id="canvas-wrapper" class="transparent-bg">
+                <canvas id="exportCanvas" width="1920" height="1080"></canvas>
+            </div>
         </div>
     </main>
 
@@ -95,44 +98,55 @@
         <div class="panel-header">EXPORT</div>
         <div class="panel-content">
             <div>
-                <div class="section-title">Output</div>
+                <div class="section-title"><i data-lucide="film" width="14"></i> Output</div>
                 <button class="btn" id="btnRec" onclick="toggleRecording()">
-                    <i data-lucide="video" width="14"></i> RECORD PRORES 4444
+                    <i data-lucide="video" width="14"></i> REC MOV (ALPHA)
                 </button>
                 <div id="recStatus"></div>
-                <div id="zipBar"></div>
+                <div id="zipProgressWrapper"><div id="zipBar"></div></div>
             </div>
         </div>
     </aside>
 
 <script>
+const FONT_NAME = 'Firma'; 
 const app = {
     fps: 24, 
     sequenceFrames: [], 
     isRecording: false, 
     ffmpeg: null, 
     width: 1920, height: 1080,
-    lastTime: 0
+    lastTime: 0,
+    bgMode: 'transparent'
 };
 
 const dom = {
     canvas: document.getElementById('exportCanvas'),
-    // CRITICAL: Explicitly request alpha channel
+    // Explicitly requesting alpha channel from the browser
     ctx: document.getElementById('exportCanvas').getContext('2d', { alpha: true }),
     recStatus: document.getElementById('recStatus'),
     zipBar: document.getElementById('zipBar'),
+    zipProgress: document.getElementById('zipProgressWrapper'),
     inpText: document.getElementById('inpText'),
     wrapper: document.getElementById('canvas-wrapper')
 };
 
-function toggleBg(isGreen) {
-    if(isGreen) dom.wrapper.classList.add('green-bg');
-    else dom.wrapper.classList.remove('green-bg');
+function setBg(mode) {
+    app.bgMode = mode;
+    document.getElementById('btnBgTrans').classList.toggle('active', mode === 'transparent');
+    document.getElementById('btnBgBlack').classList.toggle('active', mode === 'black');
+    
+    if (mode === 'transparent') {
+        dom.wrapper.classList.add('transparent-bg');
+    } else {
+        dom.wrapper.classList.remove('transparent-bg');
+    }
+    render();
 }
 
-// --- FFmpeg Logic ---
 async function loadFFmpeg() {
     if (app.ffmpeg && app.ffmpeg.isLoaded()) return;
+    
     dom.recStatus.textContent = "LOADING ENGINE...";
     try {
         const { createFFmpeg } = FFmpeg;
@@ -142,42 +156,51 @@ async function loadFFmpeg() {
         });
         await app.ffmpeg.load();
         dom.recStatus.textContent = "ENGINE READY";
+        console.log("FFmpeg Loaded");
     } catch (e) {
         console.error(e);
-        dom.recStatus.textContent = "LOAD FAILED.";
+        dom.recStatus.textContent = "LOAD FAILED";
     }
 }
 
-async function exportProRes() {
+async function exportAlphaMov() {
     if (!app.ffmpeg || !app.ffmpeg.isLoaded()) await loadFFmpeg();
-    dom.recStatus.textContent = "WRITING FILES...";
+    
+    dom.recStatus.textContent = "WRITING FRAMES...";
+    dom.zipProgress.style.display = 'block';
     
     const { fetchFile } = FFmpeg;
     
     for (let i = 0; i < app.sequenceFrames.length; i++) {
         const fname = `frame${String(i).padStart(4, '0')}.png`;
-        app.ffmpeg.FS('writeFile', fname, await fetchFile(app.sequenceFrames[i]));
+        const blob = app.sequenceFrames[i];
+        app.ffmpeg.FS('writeFile', fname, await fetchFile(blob));
         dom.zipBar.style.width = `${(i/app.sequenceFrames.length)*40}%`;
     }
     
-    dom.recStatus.textContent = "ENCODING PRORES...";
+    dom.recStatus.textContent = "ENCODING MOV ALPHA...";
     
-    // Explicit ProRes 4444 with Alpha
-    await app.ffmpeg.run(
-        '-framerate', String(app.fps),
-        '-pattern_type', 'glob', '-i', '*.png',
-        '-c:v', 'prores_ks', 
-        '-profile:v', '4444', 
-        '-pix_fmt', 'yuva444p10le', 
-        '-vendor', 'apl0',
-        '-y', 'output.mov'
-    );
+    try {
+        // We use 'qtrle' (QuickTime Animation) which supports Alpha perfectly in browsers
+        await app.ffmpeg.run(
+            '-framerate', String(app.fps),
+            '-pattern_type', 'glob', '-i', '*.png',
+            '-c:v', 'qtrle',  // QuickTime Animation (Lossless + Alpha)
+            '-y',
+            'output.mov'
+        );
+    } catch(err) {
+        console.error("Encoding error:", err);
+        dom.recStatus.textContent = "FAILED";
+        return;
+    }
     
     dom.zipBar.style.width = '100%';
-    const data = app.ffmpeg.FS('readFile', 'output.mov');
-    saveAs(new Blob([data.buffer], { type: 'video/quicktime' }), `Firma_Alpha_${Date.now()}.mov`);
     
-    // Cleanup
+    const data = app.ffmpeg.FS('readFile', 'output.mov');
+    const videoBlob = new Blob([data.buffer], { type: 'video/quicktime' });
+    saveAs(videoBlob, `Firma_Alpha_v${Date.now()}.mov`);
+    
     try {
         app.ffmpeg.FS('unlink', 'output.mov');
         for (let i = 0; i < app.sequenceFrames.length; i++) {
@@ -186,24 +209,26 @@ async function exportProRes() {
     } catch(e) {}
     
     dom.recStatus.textContent = "DONE";
-    setTimeout(() => { dom.zipBar.style.width = '0%'; }, 2000);
+    setTimeout(() => { dom.zipProgress.style.display = 'none'; dom.zipBar.style.width = '0%'; }, 2000);
 }
 
-// --- Loop ---
 function toggleRecording() {
     if (app.isRecording) {
         app.isRecording = false;
         document.getElementById('btnRec').classList.remove('recording');
-        document.getElementById('btnRec').innerHTML = `<i data-lucide="video" width="14"></i> RECORD PRORES 4444`;
-        exportProRes();
+        document.getElementById('btnRec').innerHTML = `<i data-lucide="video" width="14"></i> REC MOV (ALPHA)`;
+        exportAlphaMov();
     } else {
-        if (!crossOriginIsolated) { alert("Service Worker Missing! Check Console."); return; }
+        if (!crossOriginIsolated) {
+            alert("Security headers missing! Ensure coi-serviceworker is running.");
+            return;
+        }
         app.sequenceFrames = [];
         app.isRecording = true;
         document.getElementById('btnRec').classList.add('recording');
-        document.getElementById('btnRec').innerHTML = "STOP RECORDING";
+        document.getElementById('btnRec').innerHTML = `<i data-lucide="square" width="14"></i> STOP RECORDING`;
         dom.recStatus.textContent = "CAPTURING...";
-        loadFFmpeg();
+        loadFFmpeg(); 
     }
 }
 
@@ -211,18 +236,28 @@ function loop(t) {
     requestAnimationFrame(loop);
     if (t - app.lastTime < 1000 / app.fps) return;
     app.lastTime = t;
+    
     render();
+    
     if (app.isRecording) {
-        // PNG preserves transparency
-        dom.canvas.toBlob(b => app.sequenceFrames.push(b), 'image/png');
+        // PNG output supports Alpha automatically if canvas is clear
+        dom.canvas.toBlob(blob => {
+            app.sequenceFrames.push(blob);
+            dom.recStatus.textContent = `FRAMES: ${app.sequenceFrames.length}`;
+        }, 'image/png');
     }
 }
 
 function render() {
-    // 1. ALWAYS CLEAR CANVAS - No black fill logic allowed here
+    // 1. CLEAR CANVAS -> This creates the alpha channel
     dom.ctx.clearRect(0, 0, app.width, app.height);
     
-    // 2. Draw Text
+    // 2. Only fill black if the user SPECIFICALLY requested it
+    if (app.bgMode !== 'transparent') {
+        dom.ctx.fillStyle = "#000";
+        dom.ctx.fillRect(0,0, app.width, app.height);
+    }
+    
     dom.ctx.fillStyle = "#FF0054";
     dom.ctx.font = "bold 150px Arial";
     dom.ctx.textAlign = "center";
@@ -231,6 +266,7 @@ function render() {
 }
 
 lucide.createIcons();
+setBg('transparent');
 loop(0);
 </script>
 </body>
