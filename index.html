@@ -1599,8 +1599,9 @@
                 await app.ffmpeg.run(
                     '-framerate', String(fps),
                     '-i', 'frame_%04d.png',
-                    '-c:v', 'png',
-                    '-vf', 'setsar=1',
+                    '-c:v', 'prores_ks',
+                    '-profile:v', '4444',
+                    '-vf', 'format=yuva444p10le,setsar=1',
                     '-y',
                     'output.mov'
                 );
