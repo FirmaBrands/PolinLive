@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Fir111ma Font | Polin Live</title>
+    <title>Firma Alpha Pro | Polin Live</title>
     
     <script src="coi-serviceworker.min.js"></script>
     
@@ -16,33 +16,27 @@
     <style>
         :root {
             --bg-app: #09090b; --bg-panel: #18181b; --bg-header: #27272a; --bg-input: #09090b;
-            --border: #3f3f46; --primary: #FF0054; --text-main: #e4e4e7; --text-muted: #a1a1aa;
+            --border: #3f3f46; --primary: #FF0054; --text-main: #e4e4e7;
             --font-ui: 'Inter', sans-serif; --font-mono: 'JetBrains Mono', monospace;
         }
         * { box-sizing: border-box; outline: none; user-select: none; }
         body { background: var(--bg-app); color: var(--text-main); font-family: var(--font-ui); height: 100vh; overflow: hidden; display: grid; grid-template-columns: 280px 1fr 300px; margin: 0; font-size: 12px; }
         
-        /* Layout */
         aside { background: var(--bg-panel); border-left: 1px solid var(--border); border-right: 1px solid var(--border); display: flex; flex-direction: column; z-index: 10; }
         .panel-header { height: 48px; border-bottom: 1px solid var(--border); display: flex; align-items: center; padding: 0 16px; background: var(--bg-panel); font-weight: 700; color: #fff; }
         .panel-content { padding: 20px; display: flex; flex-direction: column; gap: 20px; overflow-y: auto; }
-        .section-title { font-size: 11px; font-weight: 600; text-transform: uppercase; color: var(--text-muted); margin-bottom: 8px; display: flex; gap: 8px; align-items: center; }
+        .section-title { font-size: 11px; font-weight: 600; text-transform: uppercase; margin-bottom: 8px; color: #888; }
         
-        textarea { width: 100%; background: var(--bg-input); border: 1px solid var(--border); color: var(--text-main); padding: 12px; font-family: 'Firma', var(--font-mono); font-size: 24px; border-radius: 6px; resize: vertical; min-height: 80px; }
+        textarea { width: 100%; background: var(--bg-input); border: 1px solid var(--border); color: #fff; padding: 12px; font-family: 'Firma', var(--font-mono); font-size: 24px; border-radius: 6px; resize: vertical; min-height: 80px; }
+
+        /* THE STAGE */
+        main { position: relative; background: #000; display: flex; align-items: center; justify-content: center; overflow: hidden; }
         
-        /* Viewport & Transparency Grid */
-        main { position: relative; background: #050505; display: flex; align-items: center; justify-content: center; overflow: hidden; }
-        .viewport { flex: 1; display: flex; align-items: center; justify-content: center; background-image: radial-gradient(#333 1px, transparent 1px); background-size: 24px 24px; width: 100%; height: 100%; }
-        
+        /* The Wrapper handles the visual background (Checkerboard/Green) */
         #canvas-wrapper { 
             box-shadow: 0 20px 50px rgba(0,0,0,0.5); 
             border: 1px solid #333; 
-            background: #000; /* Default Black */
-            transition: background 0.2s;
-        }
-        
-        /* The CSS Checkerboard (Only visible when canvas is clear) */
-        #canvas-wrapper.transparent-bg {
+            /* Default to checkerboard so you know it's transparent */
             background-color: #222;
             background-image: 
                 linear-gradient(45deg, #333 25%, transparent 25%), 
@@ -50,21 +44,21 @@
                 linear-gradient(45deg, transparent 75%, #333 75%), 
                 linear-gradient(-45deg, transparent 75%, #333 75%);
             background-size: 20px 20px;
-            background-position: 0 0, 0 10px, 10px -10px, -10px 0px;
+        }
+        
+        /* Green Screen Mode for verification */
+        #canvas-wrapper.green-bg {
+            background: #00FF00 !important;
+            background-image: none !important;
         }
 
-        .btn { width: 100%; height: 32px; cursor: pointer; background: var(--bg-header); border: 1px solid var(--border); color: var(--text-main); border-radius: 4px; display: flex; align-items: center; justify-content: center; gap: 8px; font-weight: 600; font-size: 11px; transition: 0.2s; }
+        .btn { width: 100%; height: 32px; cursor: pointer; background: var(--bg-header); border: 1px solid var(--border); color: #fff; border-radius: 4px; display: flex; align-items: center; justify-content: center; gap: 8px; font-weight: 600; font-size: 11px; transition: 0.2s; }
         .btn:hover { background: #333; }
-        .btn.active { background: var(--primary); border-color: var(--primary); color: white; }
-        .btn-rec.recording { background: #FF3924; color: white; border-color: #FF3924; animation: pulse 2s infinite; }
+        .btn-rec.recording { background: #FF3924; animation: pulse 2s infinite; border-color: #FF3924; }
         
-        #recStatus { text-align: center; margin-top: 10px; font-family: var(--font-mono); font-size: 10px; color: var(--text-muted); min-height: 14px; white-space: pre-wrap; }
-        #zipProgressWrapper { width: 100%; height: 4px; background: #222; margin-top: 8px; display: none; border-radius: 2px; }
-        #zipBar { width: 0%; height: 100%; background: var(--primary); transition: width 0.1s; }
-        
+        #recStatus { text-align: center; margin-top: 10px; font-family: var(--font-mono); font-size: 10px; color: #888; white-space: pre-wrap; }
+        #zipBar { width: 0%; height: 4px; background: var(--primary); margin-top: 8px; transition: width 0.1s; }
         @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.7; } 100% { opacity: 1; } }
-        
-        .color-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
     </style>
 </head>
 <body>
@@ -73,28 +67,27 @@
         <div class="panel-header">FIRMA FONT</div>
         <div class="panel-content">
             <div>
-                <div class="section-title"><i data-lucide="type" width="14"></i> Source</div>
+                <div class="section-title">Source</div>
                 <textarea id="inpText">FIRMA סטודיו</textarea>
             </div>
             
             <div>
-                 <div class="section-title"><i data-lucide="palette" width="14"></i> Background</div>
-                 <div class="color-row">
-                     <button class="btn active" id="btnBgTrans" onclick="setBg('transparent')">Transparent</button>
-                     <button class="btn" id="btnBgBlack" onclick="setBg('black')">Black</button>
+                 <div class="section-title">Verify Transparency</div>
+                 <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
+                     <button class="btn" onclick="toggleBg(false)">Checkerboard</button>
+                     <button class="btn" onclick="toggleBg(true)" style="background:#004400; color:#4f4;">Green Screen</button>
                  </div>
-                 <div style="font-size:10px; color:#666; margin-top:6px; line-height:1.4;">
-                     * Select "Transparent" to enable Alpha Channel export.
-                 </div>
+                 <p style="font-size:10px; color:#666; margin-top:8px; line-height:1.4;">
+                     If you see the checkerboard or green through the text, the file <b>will</b> have an alpha channel. <br><br>
+                     <span style="color:#FF3924;">Note: Video players (QuickTime/VLC) will show black. Import to After Effects to see transparency.</span>
+                 </p>
             </div>
         </div>
     </aside>
 
     <main>
-        <div class="viewport">
-            <div id="canvas-wrapper" class="transparent-bg">
-                <canvas id="exportCanvas" width="1920" height="1080"></canvas>
-            </div>
+        <div id="canvas-wrapper">
+            <canvas id="exportCanvas" width="1920" height="1080"></canvas>
         </div>
     </main>
 
@@ -102,61 +95,45 @@
         <div class="panel-header">EXPORT</div>
         <div class="panel-content">
             <div>
-                <div class="section-title"><i data-lucide="film" width="14"></i> Output</div>
+                <div class="section-title">Output</div>
                 <button class="btn" id="btnRec" onclick="toggleRecording()">
                     <i data-lucide="video" width="14"></i> RECORD PRORES 4444
                 </button>
                 <div id="recStatus"></div>
-                <div id="zipProgressWrapper"><div id="zipBar"></div></div>
+                <div id="zipBar"></div>
             </div>
         </div>
     </aside>
 
 <script>
-const FONT_NAME = 'Firma'; 
 const app = {
     fps: 24, 
     sequenceFrames: [], 
     isRecording: false, 
     ffmpeg: null, 
     width: 1920, height: 1080,
-    lastTime: 0,
-    bgMode: 'transparent' // Default to alpha
+    lastTime: 0
 };
 
 const dom = {
     canvas: document.getElementById('exportCanvas'),
+    // CRITICAL: Explicitly request alpha channel
     ctx: document.getElementById('exportCanvas').getContext('2d', { alpha: true }),
     recStatus: document.getElementById('recStatus'),
     zipBar: document.getElementById('zipBar'),
-    zipProgress: document.getElementById('zipProgressWrapper'),
     inpText: document.getElementById('inpText'),
     wrapper: document.getElementById('canvas-wrapper')
 };
 
-function setBg(mode) {
-    app.bgMode = mode;
-    
-    // UI Toggle
-    document.getElementById('btnBgTrans').classList.toggle('active', mode === 'transparent');
-    document.getElementById('btnBgBlack').classList.toggle('active', mode === 'black');
-    
-    // CSS Checkerboard Toggle
-    if (mode === 'transparent') {
-        dom.wrapper.classList.add('transparent-bg');
-    } else {
-        dom.wrapper.classList.remove('transparent-bg');
-    }
-    
-    render();
+function toggleBg(isGreen) {
+    if(isGreen) dom.wrapper.classList.add('green-bg');
+    else dom.wrapper.classList.remove('green-bg');
 }
 
-// --- FFmpeg v0.11.6 Logic ---
+// --- FFmpeg Logic ---
 async function loadFFmpeg() {
     if (app.ffmpeg && app.ffmpeg.isLoaded()) return;
-    
     dom.recStatus.textContent = "LOADING ENGINE...";
-    
     try {
         const { createFFmpeg } = FFmpeg;
         app.ffmpeg = createFFmpeg({ 
@@ -164,57 +141,41 @@ async function loadFFmpeg() {
             corePath: 'https://unpkg.com/@ffmpeg/core@0.11.0/dist/ffmpeg-core.js'
         });
         await app.ffmpeg.load();
-        
         dom.recStatus.textContent = "ENGINE READY";
-        console.log("FFmpeg 0.11 Loaded successfully!");
     } catch (e) {
         console.error(e);
-        dom.recStatus.textContent = "LOAD FAILED. Check Console.";
+        dom.recStatus.textContent = "LOAD FAILED.";
     }
 }
 
 async function exportProRes() {
     if (!app.ffmpeg || !app.ffmpeg.isLoaded()) await loadFFmpeg();
-    
     dom.recStatus.textContent = "WRITING FILES...";
-    dom.zipProgress.style.display = 'block';
     
     const { fetchFile } = FFmpeg;
     
-    // 1. Write frames (PNG preserves Alpha)
     for (let i = 0; i < app.sequenceFrames.length; i++) {
         const fname = `frame${String(i).padStart(4, '0')}.png`;
-        const blob = app.sequenceFrames[i];
-        app.ffmpeg.FS('writeFile', fname, await fetchFile(blob));
+        app.ffmpeg.FS('writeFile', fname, await fetchFile(app.sequenceFrames[i]));
         dom.zipBar.style.width = `${(i/app.sequenceFrames.length)*40}%`;
     }
     
-    dom.recStatus.textContent = "ENCODING PRORES 4444...";
+    dom.recStatus.textContent = "ENCODING PRORES...";
     
-    // 2. FFmpeg Command with Alpha Support
-    try {
-        await app.ffmpeg.run(
-            '-framerate', String(app.fps),
-            '-pattern_type', 'glob', '-i', '*.png',
-            '-c:v', 'prores_ks', 
-            '-profile:v', '4444',        // High quality profile
-            '-pix_fmt', 'yuva444p10le',  // 10-bit Alpha Pixel Format
-            '-vendor', 'apl0',           // Apple tag for compatibility
-            '-y',
-            'output.mov'
-        );
-    } catch(err) {
-        console.error("Encoding error:", err);
-        dom.recStatus.textContent = "ENCODING FAILED";
-        return;
-    }
+    // Explicit ProRes 4444 with Alpha
+    await app.ffmpeg.run(
+        '-framerate', String(app.fps),
+        '-pattern_type', 'glob', '-i', '*.png',
+        '-c:v', 'prores_ks', 
+        '-profile:v', '4444', 
+        '-pix_fmt', 'yuva444p10le', 
+        '-vendor', 'apl0',
+        '-y', 'output.mov'
+    );
     
     dom.zipBar.style.width = '100%';
-    
-    // 3. Download
     const data = app.ffmpeg.FS('readFile', 'output.mov');
-    const videoBlob = new Blob([data.buffer], { type: 'video/quicktime' });
-    saveAs(videoBlob, `Firma_ProRes_Alpha_${Date.now()}.mov`);
+    saveAs(new Blob([data.buffer], { type: 'video/quicktime' }), `Firma_Alpha_${Date.now()}.mov`);
     
     // Cleanup
     try {
@@ -225,10 +186,10 @@ async function exportProRes() {
     } catch(e) {}
     
     dom.recStatus.textContent = "DONE";
-    setTimeout(() => { dom.zipProgress.style.display = 'none'; dom.zipBar.style.width = '0%'; }, 2000);
+    setTimeout(() => { dom.zipBar.style.width = '0%'; }, 2000);
 }
 
-// --- App Loop ---
+// --- Loop ---
 function toggleRecording() {
     if (app.isRecording) {
         app.isRecording = false;
@@ -236,16 +197,13 @@ function toggleRecording() {
         document.getElementById('btnRec').innerHTML = `<i data-lucide="video" width="14"></i> RECORD PRORES 4444`;
         exportProRes();
     } else {
-        if (!crossOriginIsolated) {
-            alert("Security headers missing! Ensure coi-serviceworker is running.");
-            return;
-        }
+        if (!crossOriginIsolated) { alert("Service Worker Missing! Check Console."); return; }
         app.sequenceFrames = [];
         app.isRecording = true;
         document.getElementById('btnRec').classList.add('recording');
-        document.getElementById('btnRec').innerHTML = `<i data-lucide="square" width="14"></i> STOP RECORDING`;
+        document.getElementById('btnRec').innerHTML = "STOP RECORDING";
         dom.recStatus.textContent = "CAPTURING...";
-        loadFFmpeg(); 
+        loadFFmpeg();
     }
 }
 
@@ -255,25 +213,16 @@ function loop(t) {
     app.lastTime = t;
     render();
     if (app.isRecording) {
-        // PNG output supports Alpha
-        dom.canvas.toBlob(blob => {
-            app.sequenceFrames.push(blob);
-            dom.recStatus.textContent = `FRAMES: ${app.sequenceFrames.length}`;
-        }, 'image/png');
+        // PNG preserves transparency
+        dom.canvas.toBlob(b => app.sequenceFrames.push(b), 'image/png');
     }
 }
 
 function render() {
-    // 1. CLEAR the canvas (Result: Fully Transparent)
+    // 1. ALWAYS CLEAR CANVAS - No black fill logic allowed here
     dom.ctx.clearRect(0, 0, app.width, app.height);
     
-    // 2. Only draw black rect if mode is NOT transparent
-    if (app.bgMode !== 'transparent') {
-        dom.ctx.fillStyle = "#000";
-        dom.ctx.fillRect(0,0, app.width, app.height);
-    }
-    
-    // 3. Draw Text
+    // 2. Draw Text
     dom.ctx.fillStyle = "#FF0054";
     dom.ctx.font = "bold 150px Arial";
     dom.ctx.textAlign = "center";
@@ -282,7 +231,6 @@ function render() {
 }
 
 lucide.createIcons();
-setBg('transparent'); // Set default to transparent
 loop(0);
 </script>
 </body>
