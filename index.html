@@ -1166,13 +1166,13 @@
 
                 <div style="flex:1;"></div>
 
-                <div style="border-top:1px solid var(--border); padding-top:24px;" id="t-step-export">
+                <div style="border-top:1px solid var(--border); padding-top:32px;" id="t-step-export">
                     <div class="section-title"><i data-lucide="film" class="icon-sm"></i> Video Export</div>
 
-                    <div class="export-row">
+                    <div class="export-row" style="margin-bottom:12px;">
                         <span class="control-label">Resolution</span>
                         <select id="selResolution" style="width:145px;">
-                            <option value="3840,2160">4K Video (3840x2160)</option>
+
                             <option value="1920,1080" selected>HD Video (1920x1080)</option>
                             <option value="1080,1920">Story / TikTok (1080x1920)</option>
                             <option value="1080,1350">Instagram Post (1080x1350)</option>
@@ -1180,18 +1180,18 @@
                         </select>
                     </div>
 
-                    <div class="engine-status">
+                    <div class="engine-status" style="margin-bottom:12px;">
                         <div id="engineDot" class="status-dot"></div>
                         <span id="engineText" class="status-text">INITIALIZING...</span>
                     </div>
 
                     <button id="btnRecord" class="btn btn-rec disabled"
-                        style="height: 40px; justify-content:center; margin-top:4px;">
+                        style="height: 40px; justify-content:center; margin-top:12px;">
                         <i data-lucide="loader" class="icon-sm"></i> LOADING ENGINE...
                     </button>
 
                     <div id="recStatus"
-                        style="font-size:10px; color:var(--text-muted); text-align:center; margin-top:12px; font-family:var(--font-mono); min-height:14px; white-space: pre-wrap;">
+                        style="font-size:10px; color:var(--text-muted); text-align:center; margin-top:16px; font-family:var(--font-mono); min-height:14px; white-space: pre-wrap;">
                     </div>
                     <div id="zipProgressWrapper">
                         <div id="zipBar"></div>
