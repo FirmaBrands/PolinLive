@@ -1,3 +1,28 @@
 // coi-serviceworker.js
-/*! coi-serviceworker v0.1.7 | MIT | https://github.com/gzuidhof/coi-serviceworker */
-if(typeof window==="undefined"){self.addEventListener("install",()=>self.skipWaiting());self.addEventListener("activate",e=>e.waitUntil(self.clients.claim()));self.addEventListener("fetch",e=>{if(e.request.cache==="only-if-cached"&&e.request.mode!=="same-origin")return;e.respondWith(fetch(e.request).then(r=>{if(r.status===0)return r;const n=new Headers(r.headers);n.set("Cross-Origin-Embedder-Policy","require-corp");n.set("Cross-Origin-Opener-Policy","same-origin");return new Response(r.body,{status:r.status,statusText:r.statusText,headers:n})}).catch(e=>console.error(e)))})) }else{const n=document.createElement("script");n.src=document.currentScript.src;n.setAttribute("coi","");document.head.appendChild(n)}
+if (typeof window === "undefined") {
+    self.addEventListener("install", () => self.skipWaiting());
+    self.addEventListener("activate", (event) => event.waitUntil(self.clients.claim()));
+    self.addEventListener("fetch", (event) => {
+        if (event.request.cache === "only-if-cached" && event.request.mode !== "same-origin") return;
+        event.respondWith(
+            fetch(event.request)
+                .then((response) => {
+                    if (response.status === 0) return response;
+                    const newHeaders = new Headers(response.headers);
+                    newHeaders.set("Cross-Origin-Embedder-Policy", "require-corp");
+                    newHeaders.set("Cross-Origin-Opener-Policy", "same-origin");
+                    return new Response(response.body, {
+                        status: response.status,
+                        statusText: response.statusText,
+                        headers: newHeaders,
+                    });
+                })
+                .catch((e) => console.error(e))
+        );
+    });
+} else {
+    const script = document.createElement("script");
+    script.src = document.currentScript.src;
+    script.setAttribute("coi", "");
+    document.head.appendChild(script);
+}
