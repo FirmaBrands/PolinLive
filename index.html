@@ -3,9 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Fiiiiiirma Font | Polin Live</title>
+    <title>Firma Font | Polin Live</title>
     
-    <script src="https://cdn.jsdelivr.net/gh/gzuidhof/coi-serviceworker@latest/coi-serviceworker.min.js"></script>
+    <script src="coi-serviceworker.min.js"></script>
     
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
@@ -140,7 +140,7 @@ const app = {
     sequenceFrames: [], isRecording: false,
     bunny: null, ffmpegLoaded: false,
     nodes: [], lastTime: 0,
-    charMap: { 'A': ['ss01'], 'F': ['ss01', 'ss03'] } // Simplified for logic
+    charMap: { 'A': ['ss01'], 'F': ['ss01', 'ss03'] } 
 };
 
 const dom = {
@@ -162,48 +162,61 @@ async function init() {
     loop(0);
 }
 
-/* --- MEDIABUNNY LOGIC --- */
+/* --- MEDIABUNNY / PRORES LOGIC --- */
 
 async function initFFmpeg() {
     if (app.bunny) return;
+    
     dom.recStatus.textContent = "INITIALIZING ENGINE...";
     try {
+        // MediaBunny initialization
         app.bunny = new MediaBunny();
         await app.bunny.init();
         app.ffmpegLoaded = true;
-        dom.recStatus.textContent = "ENGINE READY";
+        console.log("MediaBunny Ready");
+        dom.recStatus.textContent = "";
     } catch (err) {
-        console.error(err);
-        dom.recStatus.textContent = "ENGINE FAILED";
+        console.error("MediaBunny Init Failed:", err);
+        dom.recStatus.textContent = "ENGINE ERROR - CHECK CONSOLE";
     }
 }
 
 async function renderProRes() {
     if (!app.ffmpegLoaded) await initFFmpeg();
+    
     dom.recStatus.textContent = "ENCODING PRORES 4444...";
     dom.zipProgressWrapper.style.display = "block";
     dom.zipBar.style.width = "10%";
 
     try {
+        // Export using MediaBunny with Alpha support
         const videoBlob = await app.bunny.export(app.sequenceFrames, {
             format: 'mov',
             fps: app.fps,
             args: [
                 '-c:v', 'prores_ks', 
-                '-profile:v', '44',          // Profile 4444
-                '-pix_fmt', 'yuva444p10le',   // Alpha support
+                '-profile:v', '44',          // Profile 4444 (Supports Alpha)
+                '-pix_fmt', 'yuva444p10le',   // YUV + Alpha pixel format
                 '-vendor', 'apl0', 
                 '-bits_per_mb', '8000'
             ]
         });
+
         dom.zipBar.style.width = "100%";
-        saveAs(videoBlob, `Firma_Alpha_${Date.now()}.mov`);
-        dom.recStatus.textContent = "DONE";
+        saveAs(videoBlob, `Firma_ProRes_Alpha_${Date.now()}.mov`);
+        dom.recStatus.textContent = "EXPORT COMPLETE";
+
     } catch (err) {
+        alert("Encoding Failed. Check console for details.");
         console.error(err);
         dom.recStatus.textContent = "ERROR";
     }
-    setTimeout(() => { dom.zipProgressWrapper.style.display = "none"; dom.recStatus.textContent = ""; }, 3000);
+
+    setTimeout(() => { 
+        dom.recStatus.textContent = ""; 
+        dom.zipProgressWrapper.style.display = "none"; 
+        dom.zipBar.style.width = "0%"; 
+    }, 3000);
 }
 
 function setExportFormat(fmt) {
@@ -241,7 +254,6 @@ function loop(t) {
     }
 }
 
-// Logic for step/render/syncText matches your original file...
 function syncText() {
     app.nodes = Array.from(dom.input.value).map(char => ({
         originalChar: char, activeTag: null, timer: 0,
