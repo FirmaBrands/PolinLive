@@ -396,7 +396,7 @@
         
         @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.7; } 100% { opacity: 1; } }
 
-        /* --- TUTORIAL OVERLAY --- */
+        /* --- TUTORIAL OVERLAY & PULSE --- */
         .t-overlay {
             position: fixed; top:0; left:0; width:100%; height:100%;
             z-index: 9999; display:none; 
@@ -410,6 +410,20 @@
             transition: all 0.4s cubic-bezier(0.25, 1, 0.5, 1);
             pointer-events: none; border: 2px solid var(--primary);
             z-index: 10000;
+        }
+
+        /* NEW: Pulse animation for tutorial targets */
+        @keyframes targetPulse {
+            0% { box-shadow: 0 0 0 0 rgba(255, 0, 84, 0.7); }
+            70% { box-shadow: 0 0 0 10px rgba(255, 0, 84, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(255, 0, 84, 0); }
+        }
+
+        .t-highlight-active {
+            animation: targetPulse 2s infinite;
+            z-index: 10001 !important; /* Pop through overlay if needed */
+            position: relative; 
+            border-radius: 4px;
         }
 
         .t-card {
@@ -823,6 +837,7 @@ const dom = {
 const Tutorial = {
     active: false,
     stepIndex: 0,
+    typingInterval: null,
     steps: [
         { 
             target: 'body', 
@@ -833,8 +848,23 @@ const Tutorial = {
         { 
             target: '#inpText', 
             title: '2. Source Content', 
-            body: 'This is where you enter your source text. It supports Hebrew, English, and punctuation.',
-            onEnter: () => dom.input.focus()
+            body: 'Type here to update the canvas in real-time.',
+            onEnter: () => {
+                dom.input.focus();
+                // Auto-type demo if user hasn't changed it
+                if(dom.input.value.includes("FIRMA")) {
+                    const demoText = "HELLO\nWORLD";
+                    let i = 0;
+                    dom.input.value = "";
+                    Tutorial.typingInterval = setInterval(() => {
+                        dom.input.value += demoText.charAt(i);
+                        app.rawText = dom.input.value;
+                        syncText(); // Sync app state
+                        i++;
+                        if (i >= demoText.length) clearInterval(Tutorial.typingInterval);
+                    }, 150);
+                }
+            }
         },
         { 
             target: '#t-step-color', 
@@ -871,20 +901,31 @@ const Tutorial = {
             target: '#panel-letter', 
             extraHighlight: '#canvas-wrapper',
             title: '8. Per-Character Modification', 
-            body: 'The Inspector panel allows you to modify settings for specific characters. Interaction is disabled during this tour, but normally you would click a letter to open this view.',
-            onEnter: () => { if(app.nodes.length > 0) selectNode(0); },
+            body: 'Click any letter to open this Inspector. You can swap glyphs, lock characters, or adjust specific kerning.',
+            onEnter: () => { 
+                if(app.nodes.length === 0) {
+                     // Ensure there is something to select
+                     dom.input.value = "A"; app.rawText = "A"; syncText();
+                }
+                selectNode(0); 
+            },
+            onLeave: () => { deselect(); },
             offsetY: 80,
             offsetX: -100
         },
         { 
             target: '#t-step-pool', 
             title: '9. Glyph Pool', 
-            body: 'This is the heart of the glitch engine. You can select which glyphs are included in the random cycle for the current character.' 
+            body: 'This is the heart of the glitch engine. You can select which glyphs are included in the random cycle for the current character.',
+            onEnter: () => { 
+                if(app.nodes.length > 0 && app.selectionIndex === -1) selectNode(0);
+            }
         },
         { 
             target: '#btnLock', 
             title: '10. Locking', 
-            body: '<b>Lock:</b> Use this to exclude specific characters from the glitch cycle entirely.' 
+            body: '<b>Lock:</b> Use this to exclude specific characters from the glitch cycle entirely.',
+            onLeave: () => { deselect(); }
         }
     ],
 
@@ -899,6 +940,12 @@ const Tutorial = {
     },
 
     end: function() {
+        // Clear any running interval
+        if(this.typingInterval) clearInterval(this.typingInterval);
+
+        // Mark as seen
+        localStorage.setItem('firma_tut_seen', 'true');
+
         const card = document.getElementById('tCard');
         const spot = document.getElementById('tSpotlight');
         const helpBtn = document.querySelector('.btn-help');
@@ -912,6 +959,9 @@ const Tutorial = {
         card.style.top = `${btnRect.top + (btnRect.height / 2)}px`;
         card.style.transform = "translate(-50%, -50%) scale(0)";
         card.style.opacity = "0";
+        
+        // Remove highlight
+        document.querySelectorAll('.t-highlight-active').forEach(el => el.classList.remove('t-highlight-active'));
 
         setTimeout(() => {
             this.active = false; 
@@ -928,6 +978,12 @@ const Tutorial = {
     },
 
     next: function() {
+        if(this.typingInterval) clearInterval(this.typingInterval);
+        
+        // Handle cleanup of current step
+        const currentStep = this.steps[this.stepIndex];
+        if(currentStep.onLeave) currentStep.onLeave();
+
         if(this.stepIndex < this.steps.length - 1) { 
             this.stepIndex++; 
             this.runStep(); 
@@ -937,6 +993,11 @@ const Tutorial = {
     },
 
     prev: function() {
+        if(this.typingInterval) clearInterval(this.typingInterval);
+        
+        const currentStep = this.steps[this.stepIndex];
+        if(currentStep.onLeave) currentStep.onLeave();
+
         if(this.stepIndex > 0) {
             this.stepIndex--;
             this.runStep();
@@ -945,6 +1006,15 @@ const Tutorial = {
 
     runStep: function() {
         const step = this.steps[this.stepIndex];
+        
+        // 1. Highlight Pulse Logic
+        document.querySelectorAll('.t-highlight-active').forEach(el => el.classList.remove('t-highlight-active'));
+        if(step.target !== 'body') {
+            const el = document.querySelector(step.target);
+            if(el) el.classList.add('t-highlight-active');
+        }
+
+        // 2. Logic Trigger
         if(step.onEnter) step.onEnter();
 
         const btnNext = document.getElementById('tBtnNext');
@@ -992,6 +1062,7 @@ const Tutorial = {
         document.getElementById('tTitle').innerText = step.title;
         document.getElementById('tBody').innerHTML = step.body;
 
+        // 3. Smart Positioning with Edge Detection
         const card = document.getElementById('tCard');
         if(step.position === 'center') {
             card.style.top = `calc(50% + ${step.offsetY || 0}px)`;
@@ -999,11 +1070,18 @@ const Tutorial = {
             card.style.transform = 'translate(-50%, -50%)';
         } else {
             const margin = 20;
+            const cardW = 300; const cardH = 200; // estimated
+            
             let top = rect.bottom + margin + (step.offsetY || 0);
             let left = rect.left + (step.offsetX || 0);
 
-            top = Math.max(margin, Math.min(top, window.innerHeight - 250));
-            left = Math.max(margin, Math.min(left, window.innerWidth - 320));
+            // Flip if hits bottom
+            if (top + cardH > window.innerHeight) {
+                 top = rect.top - cardH - margin;
+            }
+            
+            // Constrain width
+            left = Math.max(margin, Math.min(left, window.innerWidth - cardW - margin));
 
             card.style.transform = 'none';
             card.style.top = top + 'px'; 
@@ -1031,7 +1109,11 @@ async function init() {
     // Auto-load FFmpeg on start
     loadFFmpeg();
 
-    setTimeout(() => Tutorial.start(), 1000);
+    // Check if user has seen tutorial
+    const seen = localStorage.getItem('firma_tut_seen');
+    if (!seen) {
+        setTimeout(() => Tutorial.start(), 1000);
+    }
 }
 
 // --- FFMPEG / MOV LOGIC ---
