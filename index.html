@@ -28,7 +28,8 @@
             --primary: #FF0054;      /* Firma Pink */
             --primary-hover: #ff3377;
             --accent: #FF3924;       /* Orange Red (Warn) */
-            --selection: #FF0054;    
+            --selection: #FF0054;
+            --success: #00A450;    
             
             --text-main: #e4e4e7;
             --text-muted: #a1a1aa;
@@ -267,25 +268,13 @@
             background: var(--accent); border-color: var(--accent); color: white;
             animation: pulse 2s infinite; 
         }
-
-        /* --- SEGMENTED CONTROLS --- */
-        .export-row {
-            display: flex; align-items: center; justify-content: space-between;
-            margin-bottom: 8px;
+        
+        /* Disabled State for Record Button */
+        .btn-rec.disabled {
+            opacity: 0.5; cursor: not-allowed;
+            background: #222; border-color: #333;
         }
-        .seg-control {
-            background: var(--bg-input); border: 1px solid var(--border);
-            border-radius: var(--radius-sm); display: flex; padding: 2px;
-            width: 100%; height: 36px;
-        }
-        .seg-btn {
-            flex: 1; border: none; background: transparent; color: var(--text-muted);
-            font-size: 10px; font-weight: 600; padding: 0 12px; cursor: pointer;
-            border-radius: 2px; transition: 0.15s; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
-        }
-        .seg-btn span { font-size: 9px; font-weight: 400; opacity: 0.7; }
-        .seg-btn:hover { color: var(--text-main); }
-        .seg-btn.active { background: var(--bg-panel); color: var(--text-main); box-shadow: 0 1px 2px rgba(0,0,0,0.2); }
+        .btn-rec.disabled:hover { background: #222; }
 
         /* --- TOGGLE --- */
         .toggle-row { display: flex; align-items: center; justify-content: space-between; cursor: pointer; padding: 4px 0; }
@@ -498,6 +487,22 @@
             opacity: 1;
         }
 
+        /* Status Engine Indicator */
+        .engine-status {
+            display: flex; align-items: center; gap: 8px;
+            background: var(--bg-input); border: 1px solid var(--border);
+            border-radius: var(--radius-sm); padding: 8px 12px;
+            margin-bottom: 12px;
+        }
+        .status-dot {
+            width: 8px; height: 8px; border-radius: 50%;
+            background: #444; box-shadow: 0 0 5px rgba(0,0,0,0.5);
+            transition: background 0.3s, box-shadow 0.3s;
+        }
+        .status-dot.loading { background: #FFAA00; box-shadow: 0 0 8px #FFAA00; animation: pulse 1s infinite; }
+        .status-dot.ready { background: var(--success); box-shadow: 0 0 8px var(--success); }
+        .status-text { font-size: 10px; font-weight: 600; color: var(--text-muted); font-family: var(--font-mono); }
+
     </style>
 </head>
 <body>
@@ -677,7 +682,7 @@
                 <div style="flex:1;"></div>
 
                 <div style="border-top:1px solid var(--border); padding-top:24px;" id="t-step-export">
-                    <div class="section-title"><i data-lucide="film" class="icon-sm"></i> Export</div>
+                    <div class="section-title"><i data-lucide="film" class="icon-sm"></i> Video Export</div>
                     
                     <div class="export-row">
                         <span class="control-label">Resolution</span>
@@ -690,21 +695,13 @@
                         </select>
                     </div>
 
-                    <div class="section-group" style="margin-top:12px;">
-                        <div class="seg-control">
-                            <button class="seg-btn active" id="btnFmtZip" onclick="setExportFormat('zip')">
-                                PNG SEQUENCE
-                                <span>(Instant)</span>
-                            </button>
-                            <button class="seg-btn" id="btnFmtMov" onclick="setExportFormat('mov')">
-                                QUICKTIME MOV
-                                <span>(Alpha Video)</span>
-                            </button>
-                        </div>
+                    <div class="engine-status">
+                        <div id="engineDot" class="status-dot"></div>
+                        <span id="engineText" class="status-text">INITIALIZING...</span>
                     </div>
 
-                    <button id="btnRecord" class="btn btn-rec" style="height: 40px; justify-content:center; margin-top:12px;">
-                        <i data-lucide="images" class="icon-sm"></i> REC SEQUENCE
+                    <button id="btnRecord" class="btn btn-rec disabled" style="height: 40px; justify-content:center; margin-top:4px;">
+                        <i data-lucide="loader" class="icon-sm"></i> LOADING ENGINE...
                     </button>
                     
                     <div id="recStatus" style="font-size:10px; color:var(--text-muted); text-align:center; margin-top:12px; font-family:var(--font-mono); min-height:14px; white-space: pre-wrap;"></div>
@@ -775,7 +772,7 @@ const app = {
     lockLayout: false, width: 1920, height: 1080,
     previewScale: 0, fps: 24, maxConcurrent: 3, probability: 0.4, minDuration: 8,
     activeFeatures: ["ss01", "ss02", "ss03", "ss04", "ss05", "ss06"],
-    exportFormat: 'zip', bgMode: 'transparent', bgColor: '#000000',
+    bgMode: 'transparent', bgColor: '#000000',
     sequenceLimit: 300,
     charSettings: {}, 
     charMap: {
@@ -818,7 +815,9 @@ const dom = {
     zipProgressWrapper: document.getElementById('zipProgressWrapper'),
     zipBar: document.getElementById('zipBar'),
     measureSpan: null, bidiContainer: null,
-    chkLockLayout: document.getElementById('chkLockLayout')
+    chkLockLayout: document.getElementById('chkLockLayout'),
+    engineDot: document.getElementById('engineDot'),
+    engineText: document.getElementById('engineText')
 };
 
 const Tutorial = {
@@ -840,7 +839,7 @@ const Tutorial = {
         { 
             target: '#t-step-color', 
             title: '3. Appearance', 
-            body: 'Customize your palette here. <br><b>Note:</b> "Transparent" background is available for both PNG Sequence and QuickTime MOV.' 
+            body: 'Customize your palette here. <br><b>Note:</b> "Transparent" background is available for Alpha Video export.' 
         },
         { 
             target: '#t-step-typo', 
@@ -864,8 +863,8 @@ const Tutorial = {
         },
         { 
             target: '#t-step-export', 
-            title: '7. Export', 
-            body: 'Select <b>PNG Sequence</b> (Instant) or <b>QuickTime MOV</b> (Requires Processing). <br>Both formats support Alpha Channel for After Effects.',
+            title: '7. Export Video', 
+            body: 'Exports a high-quality QuickTime MOV file (Lossless) with Alpha Transparency, ready for After Effects.',
             onEnter: () => { deselect(); }
         },
         { 
@@ -1029,14 +1028,36 @@ async function init() {
     setupControls(); syncText(); handleResize(); 
     window.addEventListener('resize', handleResize); updateActiveSwatches(); loop(0);
     
+    // Auto-load FFmpeg on start
+    loadFFmpeg();
+
     setTimeout(() => Tutorial.start(), 1000);
 }
 
 // --- FFMPEG / MOV LOGIC ---
+function updateEngineStatus(state) {
+    if (state === 'loading') {
+        dom.engineDot.className = 'status-dot loading';
+        dom.engineText.innerText = "LOADING CORE...";
+        dom.btnRecord.classList.add('disabled');
+        dom.btnRecord.innerHTML = `<i data-lucide="loader" class="icon-sm"></i> LOADING...`;
+    } else if (state === 'ready') {
+        dom.engineDot.className = 'status-dot ready';
+        dom.engineText.innerText = "ENGINE READY";
+        dom.btnRecord.classList.remove('disabled');
+        dom.btnRecord.innerHTML = `<i data-lucide="video" class="icon-sm"></i> REC VIDEO`;
+    } else if (state === 'error') {
+        dom.engineDot.style.background = 'red';
+        dom.engineText.innerText = "LOAD FAILED";
+        dom.btnRecord.innerHTML = "ENGINE ERROR";
+    }
+    lucide.createIcons();
+}
+
 async function loadFFmpeg() {
     if (app.ffmpeg && app.ffmpeg.isLoaded()) return;
 
-    dom.recStatus.textContent = "LOADING ENGINE...";
+    updateEngineStatus('loading');
     try {
         const { createFFmpeg } = FFmpeg;
         // Using standard multi-threaded core from UNPKG
@@ -1045,18 +1066,19 @@ async function loadFFmpeg() {
             corePath: 'https://unpkg.com/@ffmpeg/core@0.11.0/dist/ffmpeg-core.js'
         });
         await app.ffmpeg.load();
-        dom.recStatus.textContent = "ENGINE READY";
         app.ffmpegLoaded = true;
+        updateEngineStatus('ready');
         console.log("FFmpeg Loaded");
     } catch (e) {
         console.error(e);
-        dom.recStatus.textContent = "LOAD FAILED";
-        alert("FFmpeg Failed to Load. Check console.");
+        updateEngineStatus('error');
     }
 }
 
 async function renderAlphaVideo() {
-    if (!app.ffmpeg || !app.ffmpeg.isLoaded()) await loadFFmpeg();
+    if (!app.ffmpeg || !app.ffmpeg.isLoaded()) {
+        alert("Engine not ready."); return;
+    }
     
     dom.recStatus.textContent = "WRITING FRAMES...";
     dom.zipProgressWrapper.style.display = "block";
@@ -1078,7 +1100,6 @@ async function renderAlphaVideo() {
     dom.recStatus.textContent = "ENCODING ALPHA VIDEO...";
 
     // Run FFmpeg (QuickTime Animation / qtrle)
-    // This is the specific codec from your reference that ensures alpha compatibility.
     try {
         await app.ffmpeg.run(
             '-framerate', String(fps),
@@ -1371,56 +1392,41 @@ function setColor(hex) {
     render(); 
 }
 
-function setExportFormat(fmt) {
-    app.exportFormat = fmt;
-    document.getElementById('btnFmtZip').classList.toggle('active', fmt === 'zip');
-    document.getElementById('btnFmtMov').classList.toggle('active', fmt === 'mov');
-    
-    updateRecordButton();
-    if(fmt === 'mov') loadFFmpeg(); // Preload engine
-}
-
 function updateRecordButton() {
     const btn = dom.btnRecord; 
-    const isZip = app.exportFormat === 'zip';
     if(!app.isRecording) {
-        btn.innerHTML = `<i data-lucide="${isZip ? 'images' : 'film'}" class="icon-sm"></i> ${isZip ? 'REC SEQUENCE' : 'REC VIDEO'}`;
+        btn.innerHTML = `<i data-lucide="video" class="icon-sm"></i> REC VIDEO`;
         btn.classList.remove('recording'); dom.recStatus.textContent = "";
-    } else { btn.innerHTML = `<i data-lucide="square" class="icon-sm"></i> STOP RECORDING`; btn.classList.add('recording'); }
+    } else { 
+        btn.innerHTML = `<i data-lucide="square" class="icon-sm"></i> STOP RECORDING`; 
+        btn.classList.add('recording'); 
+    }
     lucide.createIcons();
 }
 
 function toggleRecording() { 
-    if (!app.isRecording && app.exportFormat === 'mov') {
+    if (app.isRecording) {
+        stopRecording();
+    } else {
+        if (!app.ffmpegLoaded) { alert("Please wait for engine to load."); return; }
         // Safety check for COI
         if (!crossOriginIsolated) {
              alert("Security Warning: 'SharedArrayBuffer' is not available. This prevents video encoding.\n\nEnsure 'coi-serviceworker.min.js' is loaded and the server is sending correct headers.");
              return;
         }
+        startRecording();
     }
-    app.isRecording ? stopRecording() : startRecording(); 
 }
 
 function startRecording() {
     app.isRecording = true; updateRecordButton();
-    // Reset buffers for both formats
+    // Reset buffers
     app.sequenceFrames = []; 
     dom.recStatus.textContent = "CAPTURING...";
 }
 function stopRecording() {
     app.isRecording = false; updateRecordButton();
-    if (app.exportFormat === 'zip') finalizeZip();
-    else if (app.exportFormat === 'mov') renderAlphaVideo();
-}
-
-function finalizeZip() {
-    dom.recStatus.textContent = "COMPRESSING..."; dom.zipProgressWrapper.style.display = "block";
-    const zip = new JSZip(); const f = zip.folder("sequence");
-    app.sequenceFrames.forEach((b, i) => f.file(`frame_${String(i).padStart(4,'0')}.png`, b));
-    zip.generateAsync({type:"blob"}, m => dom.zipBar.style.width = m.percent+"%").then(c => {
-        saveAs(c, `Firma_Seq_${Date.now()}.zip`); dom.recStatus.textContent = "DONE";
-        setTimeout(() => { dom.recStatus.textContent = ""; dom.zipProgressWrapper.style.display = "none"; dom.zipBar.style.width = "0%"; }, 2000);
-    });
+    renderAlphaVideo();
 }
 
 function buildGlyphGrid(node) {
