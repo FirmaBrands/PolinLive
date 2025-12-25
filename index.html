@@ -1104,9 +1104,9 @@ async function renderAlphaVideo() {
         await app.ffmpeg.run(
             '-framerate', String(fps),
             '-pattern_type', 'glob', '-i', '*.png',
-            '-c:v', 'qtrle',  // QuickTime Animation (Lossless + Alpha)
-            '-r', String(fps),
-            '-vf', 'setsar=1', // Force Square Pixels
+            '-c:v', 'qtrle',                   // Codec: QuickTime Animation
+            '-pix_fmt', 'argb',                // Force ARGB
+            '-s', `${app.width}x${app.height}`,// FORCE OUTPUT RESOLUTION
             '-y',
             'output.mov'
         );
@@ -1367,3 +1367,161 @@ function updateActiveSwatches() {
     });
     
     transSwatch.classList.remove('active');
+    if(app.bgMode === 'transparent') transSwatch.classList.add('active');
+}
+
+function getContrastColor(hex) {
+    const upper = hex.toUpperCase();
+    return (upper === '#FFFFFF' || upper === '#DFF946') ? '#000000' : '#FFFFFF';
+}
+
+function setBgMode(mode, val) {
+    app.bgMode = mode;
+    if(mode === 'color') { 
+        const newBg = (val || dom.inpBgColor.value).toUpperCase();
+        if(newBg === app.textColor.toUpperCase()) {
+            app.textColor = getContrastColor(newBg);
+            dom.inpColor.value = app.textColor;
+        }
+        app.bgColor = newBg;
+        if(!val) setTimeout(() => dom.inpBgColor.click(), 50);
+    }
+    updateActiveSwatches();
+    render();
+}
+
+function setColor(hex) { 
+    const newText = hex.toUpperCase();
+    if(app.bgMode === 'color' && newText === app.bgColor.toUpperCase()) {
+        app.bgColor = getContrastColor(newText);
+        dom.inpBgColor.value = app.bgColor;
+    }
+    app.textColor = newText; 
+    dom.inpColor.value = newText; 
+    updateActiveSwatches(); 
+    render(); 
+}
+
+function updateRecordButton() {
+    const btn = dom.btnRecord; 
+    if(!app.isRecording) {
+        btn.innerHTML = `<i data-lucide="video" class="icon-sm"></i> REC VIDEO`;
+        btn.classList.remove('recording'); dom.recStatus.textContent = "";
+    } else { 
+        btn.innerHTML = `<i data-lucide="square" class="icon-sm"></i> STOP RECORDING`; 
+        btn.classList.add('recording'); 
+    }
+    lucide.createIcons();
+}
+
+function toggleRecording() { 
+    if (app.isRecording) {
+        stopRecording();
+    } else {
+        if (!app.ffmpegLoaded) { alert("Please wait for engine to load."); return; }
+        // Safety check for COI
+        if (!crossOriginIsolated) {
+             alert("Security Warning: 'SharedArrayBuffer' is not available. This prevents video encoding.\n\nEnsure 'coi-serviceworker.min.js' is loaded and the server is sending correct headers.");
+             return;
+        }
+        startRecording();
+    }
+}
+
+function startRecording() {
+    app.isRecording = true; updateRecordButton();
+    // Reset buffers
+    app.sequenceFrames = []; 
+    dom.recStatus.textContent = "CAPTURING...";
+}
+function stopRecording() {
+    app.isRecording = false; updateRecordButton();
+    renderAlphaVideo();
+}
+
+function buildGlyphGrid(node) {
+    dom.glyphGrid.innerHTML = ''; const char = node.override || node.originalChar;
+    const tags = app.charMap[char] || []; const allOptions = [null, ...tags];
+    if(allOptions.length === 1) { dom.glyphGrid.innerHTML = `<div style="grid-column:1/-1; text-align:center; color:#555; padding:10px;">NO ALTERNATES</div>`; return; }
+    allOptions.forEach(tag => {
+        const btn = document.createElement('div'); const isActive = node.glyphPool.includes(tag);
+        btn.className = `glyph-option ${isActive ? 'active' : ''}`;
+        const previewChar = char; const style = tag ? `font-feature-settings:'${tag}' 1` : `font-feature-settings: normal`;
+        const label = tag ? tag.replace('ss', '') : 'BASE';
+        btn.innerHTML = `<span class="glyph-preview" style="${style}">${previewChar}</span><span class="glyph-label">${label}</span>`;
+        btn.onclick = () => {
+            if (node.glyphPool.includes(tag)) { if (node.glyphPool.length > 1) node.glyphPool = node.glyphPool.filter(t => t !== tag); }
+            else { node.glyphPool.push(tag); }
+            buildGlyphGrid(node); if(node.activeTag === tag && !node.glyphPool.includes(tag)) node.activeTag = node.glyphPool[0]; render();
+        };
+        dom.glyphGrid.appendChild(btn);
+    });
+}
+
+function selectNode(i) {
+    app.selectionIndex = i; const n = app.nodes[i];
+    document.body.classList.add('has-selection'); dom.inspCharDisplay.textContent = n.originalChar;
+    dom.inspIndex.textContent = `INDEX #${i}`;
+    dom.slML.value = n.marginLeft; dom.numML.value = n.marginLeft; dom.slMR.value = n.marginRight; dom.numMR.value = n.marginRight;
+    updateLockBtn(n.locked); buildGlyphGrid(n); render();
+}
+function deselect() { app.selectionIndex = -1; document.body.classList.remove('has-selection'); render(); }
+function updateLockBtn(locked) {
+    dom.btnLock.innerHTML = `<i data-lucide="${locked?'unlock':'lock'}" class="icon-sm"></i> ${locked?"UNLOCK":"LOCK"}`;
+    dom.btnLock.classList.toggle('btn-primary', locked); lucide.createIcons();
+}
+
+function setupControls() {
+    dom.input.oninput = e => { app.rawText = e.target.value; syncText(); };
+    dom.inpColor.oninput = e => { setColor(e.target.value); };
+    dom.inpBgColor.oninput = e => { setBgMode('color', e.target.value); };
+    const bind = (k, sl, num, sc=1) => {
+        const s = document.getElementById(sl), n = document.getElementById(num);
+        s.oninput = e => { app[k] = parseFloat(e.target.value)*sc; if(n.type==='number') n.value = app[k]/sc; else n.value=e.target.value; app.widthCache={}; render(); };
+        if(n.type==='number') n.onchange = e => { app[k] = parseFloat(e.target.value)*sc; s.value = app[k]/sc; app.widthCache={}; render(); };
+    };
+    bind('fontSize', 'slSize', 'numSize'); bind('lineHeight', 'slLH', 'numLH');
+    bind('tracking', 'slTrack', 'numTrack'); bind('fps', 'slFps', 'numFps');
+    bind('probability', 'slProb', 'numProb', 0.01); bind('minDuration', 'slDur', 'numDur');
+    bind('maxConcurrent', 'slMax', 'numMax');
+    
+    document.getElementById('btnResetEngine').onclick = () => {
+        const defaults = { fps: 24, maxConcurrent: 3, probability: 0.4, minDuration: 8 };
+        Object.assign(app, defaults);
+        document.getElementById('slFps').value = defaults.fps; document.getElementById('numFps').value = defaults.fps;
+        document.getElementById('slMax').value = defaults.maxConcurrent; document.getElementById('numMax').value = defaults.maxConcurrent;
+        document.getElementById('slProb').value = defaults.probability * 100; document.getElementById('numProb').value = defaults.probability * 100;
+        document.getElementById('slDur').value = defaults.minDuration; document.getElementById('numDur').value = defaults.minDuration;
+        render();
+    };
+
+    const setupSpacing = (slId, numId, prop) => {
+        const sl = document.getElementById(slId), num = document.getElementById(numId);
+        const h = v => { if(app.selectionIndex > -1) app.nodes[app.selectionIndex][prop] = v; };
+        sl.oninput = e => { const v=parseFloat(e.target.value); num.value=v; h(v); };
+        num.onchange = e => { const v=parseFloat(e.target.value); sl.value=v; h(v); };
+    };
+    setupSpacing('slML', 'numML', 'marginLeft'); setupSpacing('slMR', 'numMR', 'marginRight');
+    dom.chkLockLayout.onchange = (e) => { app.lockLayout = e.target.checked; app.widthCache = {}; render(); };
+    
+    dom.selResolution.onchange = e => {
+        const p = e.target.value.split(','); app.width=parseInt(p[0]); app.height=parseInt(p[1]);
+        dom.canvas.width=app.width; dom.canvas.height=app.height; app.widthCache={}; handleResize(); render();
+    };
+    dom.btnRecord.onclick = toggleRecording;
+    dom.btnLock.onclick = () => { if(app.selectionIndex > -1) { const n=app.nodes[app.selectionIndex]; n.locked=!n.locked; updateLockBtn(n.locked); } };
+    document.getElementById('btnCloseInsp').onclick = deselect;
+    dom.btnApplyAll.onclick = () => {
+        if(app.selectionIndex === -1) return;
+        const sourceNode = app.nodes[app.selectionIndex]; const targetChar = sourceNode.originalChar;
+        app.charSettings[targetChar] = [...sourceNode.glyphPool];
+        app.nodes.forEach(n => { if(n.originalChar === targetChar) { n.glyphPool = [...sourceNode.glyphPool]; if (!n.glyphPool.includes(n.activeTag)) { n.activeTag = n.glyphPool[0]; n.timer = 0; } } });
+        render();
+    };
+    document.querySelectorAll('.num-input').forEach(i => i.onclick = function(){this.select()});
+}
+
+init();
+</script>
+</body>
+</html>
