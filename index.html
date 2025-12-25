@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Firma Font | Polin Live</title>
+    <title>Fir23ma Font | Polin Live</title>
 
     <script src="coi-serviceworker.min.js"></script>
 
@@ -1596,10 +1596,8 @@
                 await app.ffmpeg.run(
                     '-framerate', String(fps),
                     '-i', 'frame_%04d.png',
-                    '-c:v', 'prores_ks',
-                    '-profile:v', '4444',
+                    '-c:v', 'png',
                     '-vf', 'setsar=1',
-                    '-pix_fmt', 'yuva444p10le',
                     '-y',
                     'output.mov'
                 );
