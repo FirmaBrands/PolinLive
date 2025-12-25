@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Fir23ma Font | Polin Live</title>
+    <title>Firma Font | Polin Live</title>
 
     <script src="coi-serviceworker.min.js"></script>
 
@@ -1576,23 +1576,26 @@
             dom.zipProgressWrapper.style.display = "block";
             dom.zipBar.style.width = "0%";
 
-            const fps = app.fps;
-            const { fetchFile } = FFmpeg;
-
-            // Write captured PNGs to FFmpeg filesystem
-            for (let i = 0; i < app.sequenceFrames.length; i++) {
-                const blob = app.sequenceFrames[i];
-                const name = `frame_${String(i).padStart(4, '0')}.png`;
-                app.ffmpeg.FS('writeFile', name, await fetchFile(blob));
-
-                const pct = ((i / app.sequenceFrames.length) * 40);
-                dom.zipBar.style.width = `${pct}%`;
-            }
-
-            dom.recStatus.textContent = "ENCODING ALPHA VIDEO...";
-
-            // Run FFmpeg (QuickTime Animation / qtrle)
             try {
+                const fps = app.fps;
+                const { fetchFile } = FFmpeg;
+                const totalFrames = app.sequenceFrames.length;
+
+                // Write captured PNGs to FFmpeg filesystem
+                // Optimized: Release memory as we write to allow for 4K buffer
+                for (let i = 0; i < totalFrames; i++) {
+                    const blob = app.sequenceFrames.shift(); // Remove from JS heap
+                    if (!blob) break;
+                    const name = `frame_${String(i).padStart(4, '0')}.png`;
+                    app.ffmpeg.FS('writeFile', name, await fetchFile(blob));
+
+                    const pct = ((i / totalFrames) * 40);
+                    dom.zipBar.style.width = `${pct}%`;
+                }
+
+                dom.recStatus.textContent = "ENCODING ALPHA VIDEO...";
+
+                // Run FFmpeg
                 await app.ffmpeg.run(
                     '-framerate', String(fps),
                     '-i', 'frame_%04d.png',
@@ -1601,33 +1604,34 @@
                     '-y',
                     'output.mov'
                 );
+
+                dom.zipBar.style.width = "90%";
+
+                const data = app.ffmpeg.FS('readFile', 'output.mov');
+                const videoBlob = new Blob([data.buffer], { type: 'video/quicktime' });
+                saveAs(videoBlob, `Firma_Alpha_Mov_${Date.now()}.mov`);
+
+                // Cleanup
+                try {
+                    app.ffmpeg.FS('unlink', 'output.mov');
+                    for (let i = 0; i < totalFrames; i++) {
+                        try { app.ffmpeg.FS('unlink', `frame_${String(i).padStart(4, '0')}.png`); } catch (e) { }
+                    }
+                } catch (e) { }
+
             } catch (err) {
-                alert("Encoding Failed. See console.");
+                alert("Export Failed. System may have run out of memory for 4K.");
                 console.error(err);
                 dom.recStatus.textContent = "ERROR";
-                return;
+            } finally {
+                dom.selResolution.disabled = false;
+                dom.recStatus.textContent = "DONE";
+                setTimeout(() => {
+                    dom.recStatus.textContent = "";
+                    dom.zipProgressWrapper.style.display = "none";
+                    dom.zipBar.style.width = "0%";
+                }, 3000);
             }
-
-            dom.zipBar.style.width = "90%";
-
-            const data = app.ffmpeg.FS('readFile', 'output.mov');
-            const videoBlob = new Blob([data.buffer], { type: 'video/quicktime' });
-            saveAs(videoBlob, `Firma_Alpha_Mov_${Date.now()}.mov`);
-
-            // Cleanup
-            try {
-                app.ffmpeg.FS('unlink', 'output.mov');
-                for (let i = 0; i < app.sequenceFrames.length; i++) {
-                    app.ffmpeg.FS('unlink', `frame_${String(i).padStart(4, '0')}.png`);
-                }
-            } catch (e) { }
-
-            dom.recStatus.textContent = "DONE";
-            setTimeout(() => {
-                dom.recStatus.textContent = "";
-                dom.zipProgressWrapper.style.display = "none";
-                dom.zipBar.style.width = "0%";
-            }, 3000);
         }
 
         function syncText() {
@@ -1920,6 +1924,7 @@
         }
 
         function startRecording() {
+            dom.selResolution.disabled = true;
             app.isRecording = true; updateRecordButton();
             // Reset buffers
             app.sequenceFrames = [];
