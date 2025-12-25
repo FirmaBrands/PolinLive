@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Fi!rma Font | Polin Live</title>
+    <title>Firma Font | Polin Live</title>
     
     <script src="coi-serviceworker.min.js"></script>
     
@@ -11,7 +11,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
     
-    <script src="https://cdn.jsdelivr.net/npm/mediabunny@1.0.1/dist/index.bundle.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/mediabunny@1.0.1/dist/index.bundle.min.js"></script>
     
     <style>
         :root {
@@ -75,13 +75,14 @@ async function initFFmpeg() {
     if (app.bunny) return;
     dom.recStatus.textContent = "INITIALIZING ENGINE...";
     try {
+        // Now that the script loads, this will no longer throw a ReferenceError
         app.bunny = new MediaBunny();
         await app.bunny.init();
         app.ffmpegLoaded = true;
         dom.recStatus.textContent = "ENGINE READY";
     } catch (err) {
         console.error(err);
-        dom.recStatus.textContent = "ENGINE INIT FAILED - CHECK CONSOLE";
+        dom.recStatus.textContent = "ENGINE INIT FAILED";
     }
 }
 
