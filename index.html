@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Firma Font | Polin Live</title>
+    <title>Firma 123Font | Polin Live</title>
     
     <script src="coi-serviceworker.min.js"></script>
     
@@ -75,7 +75,7 @@ async function initFFmpeg() {
     if (app.bunny) return;
     dom.recStatus.textContent = "INITIALIZING ENGINE...";
     try {
-        // Now that the script loads, this will no longer throw a ReferenceError
+        // Now works because the correct script has loaded
         app.bunny = new MediaBunny();
         await app.bunny.init();
         app.ffmpegLoaded = true;
@@ -91,6 +91,7 @@ async function renderProRes() {
     dom.recStatus.textContent = "ENCODING PRORES 4444...";
     dom.zipProgressWrapper.style.display = "block";
     try {
+        // High-quality ProRes with Alpha support
         const videoBlob = await app.bunny.export(app.sequenceFrames, {
             format: 'mov', fps: app.fps,
             args: ['-c:v', 'prores_ks', '-profile:v', '44', '-pix_fmt', 'yuva444p10le']
