@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Firma Font | Polin Live</title>
+    <title>Firma Font | Polin 1Live</title>
 
     <script src="coi-serviceworker.min.js"></script>
 
@@ -1597,11 +1597,12 @@
 
                 /* FIX APPLIED:
                    1. Codec: prores_ks (Apple ProRes) - industry standard for transparency.
-                   2. Profile: 4444 (Supports alpha).
-                   3. Pix Fmt: yuva444p10le (10-bit YUV with Alpha) - crucial for QuickTime.
+                   2. Profile: 4444 (4) - REQUIRED for alpha.
+                   3. Pix Fmt: yuva444p10le - REQUIRED for 10-bit color + alpha.
                    4. Vendor: apl0 - Tags file as Apple-compatible to force QuickTime recognition.
-                   5. Filter: setsar=1 - Forces Square Pixel Aspect Ratio to prevent squishing on odd resolutions.
-                   6. No Scaling - Keeps exact canvas dimensions to prevent aliasing.
+                   5. Alpha Bits: 16 - Force alpha channel depth to prevent drop-out.
+                   6. Premultiply Filter: 'premultiply=inplace=1' - This fixes the "Jagged Edges" / Halo effect
+                      by converting the Straight Alpha (Canvas) to Premultiplied Alpha (ProRes).
                 */
 
                 await app.ffmpeg.run(
@@ -1611,7 +1612,9 @@
                     '-profile:v', '4444',
                     '-pix_fmt', 'yuva444p10le',
                     '-vendor', 'apl0',
-                    '-vf', 'setsar=1',
+                    '-bits_per_mb', '8000',
+                    '-alpha_bits', '16',
+                    '-vf', 'setsar=1,premultiply=inplace=1',
                     '-y',
                     'output.mov'
                 );
