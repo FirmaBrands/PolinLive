@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Firma Font | Polin Live</title>
+    <title>Fir1ma Font | Polin Live</title>
 
     <script src="coi-serviceworker.min.js"></script>
 
@@ -1610,7 +1610,7 @@
                     // Ensure specific pixel format and alignment. 
                     // Note: 'setsar=1' removed to avoid aspect ratio issues on non-standard res.
                     // Added even-dimension constraint just in case.
-                    '-vf', 'scale=trunc(iw/2)*2:trunc(ih/2)*2,format=yuva444p10le',
+                    '-vf', 'scale=trunc(iw/2)*2:trunc(ih/2)*2:flags=lanczos,setsar=1,format=yuva444p10le',
                     '-vtag', 'ap4h',
                     '-vendor', 'apl0',
                     '-bits_per_mb', '8000',
