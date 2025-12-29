@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Firma Font | Polin Live</title>
+    <title>Firma F222ont | Polin Live</title>
 
     <script src="coi-serviceworker.min.js"></script>
 
@@ -1595,12 +1595,13 @@
 
                 dom.recStatus.textContent = "ENCODING ALPHA VIDEO...";
 
-                // Run FFmpeg
+                // Run FFmpeg - using QTRLE (QuickTime Animation) codec
+                // This is guaranteed available in ffmpeg.wasm and natively supported by QuickTime/Keynote
                 await app.ffmpeg.run(
                     '-framerate', String(fps),
                     '-i', 'frame_%04d.png',
-                    '-c:v', 'png',
-                    '-vf', 'setsar=1',
+                    '-c:v', 'qtrle',
+                    '-pix_fmt', 'argb',
                     '-y',
                     'output.mov'
                 );
