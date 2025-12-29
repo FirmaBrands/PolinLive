@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Firma Font | Polin Live</title>
+    <title>Firma Font | Po123lin Live</title>
 
     <script src="coi-serviceworker.min.js"></script>
 
@@ -1170,15 +1170,6 @@
                     <div class="section-title"><i data-lucide="film" class="icon-sm"></i> Video Export</div>
 
                     <div class="export-row" style="margin-bottom:12px;">
-                        <span class="control-label">Format</span>
-                        <select id="selFormat"
-                            style="width:145px; background:var(--bg-input); border:1px solid var(--border); color:white; padding:4px; border-radius:4px;">
-                            <option value="mov" selected>QuickTime (MOV)</option>
-                            <option value="svg">Animated SVG</option>
-                        </select>
-                    </div>
-
-                    <div class="export-row" style="margin-bottom:12px;">
                         <span class="control-label">Resolution</span>
                         <select id="selResolution" style="width:145px;">
 
@@ -1186,6 +1177,14 @@
                             <option value="1080,1920">Story / TikTok (1080x1920)</option>
                             <option value="1080,1350">Instagram Post (1080x1350)</option>
                             <option value="1080,1080">Linkedin Square (1080x1080)</option>
+                        </select>
+                    </div>
+
+                    <div class="export-row" style="margin-bottom:12px;">
+                        <span class="control-label">Format</span>
+                        <select id="selFormat" style="width:145px;">
+                            <option value="mov" selected>MOV (Alpha)</option>
+                            <option value="gif">GIF (Transparent)</option>
                         </select>
                     </div>
 
@@ -1291,9 +1290,6 @@
             },
             isPlaying: true, lastTime: 0, nodes: [], selectionIndex: -1,
             isRecording: false, sequenceFrames: [], mediaRecorder: null, recordedChunks: [],
-            exportFormat: 'mov', // 'mov' or 'svg'
-            recordedSVGData: [], // Stores frame snapshots for SVG
-            currentFrameData: [], // Temp storage for current render frame
             widthCache: {}, bidiCache: {},
             ffmpeg: null, ffmpegLoaded: false
         };
@@ -1544,23 +1540,17 @@
             if (state === 'loading') {
                 dom.engineDot.className = 'status-dot loading';
                 dom.engineText.innerText = "LOADING CORE...";
-                if (app.exportFormat === 'mov') {
-                    dom.btnRecord.classList.add('disabled');
-                    dom.btnRecord.innerHTML = `<i data-lucide="loader" class="icon-sm"></i> LOADING...`;
-                }
+                dom.btnRecord.classList.add('disabled');
+                dom.btnRecord.innerHTML = `<i data-lucide="loader" class="icon-sm"></i> LOADING...`;
             } else if (state === 'ready') {
                 dom.engineDot.className = 'status-dot ready';
                 dom.engineText.innerText = "ENGINE READY";
-                if (app.exportFormat === 'mov') {
-                    dom.btnRecord.classList.remove('disabled');
-                    dom.btnRecord.innerHTML = `<i data-lucide="video" class="icon-sm"></i> REC VIDEO`;
-                }
+                dom.btnRecord.classList.remove('disabled');
+                dom.btnRecord.innerHTML = `<i data-lucide="video" class="icon-sm"></i> REC VIDEO`;
             } else if (state === 'error') {
                 dom.engineDot.style.background = 'red';
                 dom.engineText.innerText = "LOAD FAILED";
-                if (app.exportFormat === 'mov') {
-                    dom.btnRecord.innerHTML = "ENGINE ERROR";
-                }
+                dom.btnRecord.innerHTML = "ENGINE ERROR";
             }
             lucide.createIcons();
         }
@@ -1586,11 +1576,12 @@
             }
         }
 
-        async function renderAlphaVideo() {
+        async function renderExport() {
             if (!app.ffmpeg || !app.ffmpeg.isLoaded()) {
                 alert("Engine not ready."); return;
             }
 
+            const format = dom.selFormat.value;
             dom.recStatus.textContent = "WRITING FRAMES...";
             dom.zipProgressWrapper.style.display = "block";
             dom.zipBar.style.width = "0%";
@@ -1601,7 +1592,6 @@
                 const totalFrames = app.sequenceFrames.length;
 
                 // Write captured PNGs to FFmpeg filesystem
-                // Optimized: Release memory as we write to allow for 4K buffer
                 for (let i = 0; i < totalFrames; i++) {
                     const blob = app.sequenceFrames.shift(); // Remove from JS heap
                     if (!blob) break;
@@ -1612,38 +1602,51 @@
                     dom.zipBar.style.width = `${pct}%`;
                 }
 
-                dom.recStatus.textContent = "ENCODING ALPHA VIDEO...";
-
-                // Run FFmpeg
-                await app.ffmpeg.run(
-                    '-framerate', String(fps),
-                    '-i', 'frame_%04d.png',
-                    '-c:v', 'png',
-                    '-vf', 'setsar=1',
-                    '-y',
-                    'output.mov'
-                );
-
-                dom.zipBar.style.width = "90%";
-
-                const data = app.ffmpeg.FS('readFile', 'output.mov');
-                const videoBlob = new Blob([data.buffer], { type: 'video/quicktime' });
-                saveAs(videoBlob, `Firma_Alpha_Mov_${Date.now()}.mov`);
-
-                // Cleanup
-                try {
+                if (format === 'mov') {
+                    dom.recStatus.textContent = "ENCODING ALPHA VIDEO...";
+                    await app.ffmpeg.run(
+                        '-framerate', String(fps),
+                        '-i', 'frame_%04d.png',
+                        '-c:v', 'png',
+                        '-vf', 'setsar=1',
+                        '-y',
+                        'output.mov'
+                    );
+                    dom.zipBar.style.width = "90%";
+                    const data = app.ffmpeg.FS('readFile', 'output.mov');
+                    const videoBlob = new Blob([data.buffer], { type: 'video/quicktime' });
+                    saveAs(videoBlob, `Firma_Alpha_Mov_${Date.now()}.mov`);
                     app.ffmpeg.FS('unlink', 'output.mov');
-                    for (let i = 0; i < totalFrames; i++) {
-                        try { app.ffmpeg.FS('unlink', `frame_${String(i).padStart(4, '0')}.png`); } catch (e) { }
-                    }
-                } catch (e) { }
+
+                } else if (format === 'gif') {
+                    dom.recStatus.textContent = "GENERATING GIF...";
+                    // Use palettegen/paletteuse for high quality transparent GIF
+                    await app.ffmpeg.run(
+                        '-framerate', String(fps),
+                        '-i', 'frame_%04d.png',
+                        '-filter_complex', '[0:v] split [a][b];[a] palettegen [p];[b][p] paletteuse',
+                        '-y',
+                        'output.gif'
+                    );
+                    dom.zipBar.style.width = "90%";
+                    const data = app.ffmpeg.FS('readFile', 'output.gif');
+                    const videoBlob = new Blob([data.buffer], { type: 'image/gif' });
+                    saveAs(videoBlob, `Firma_Glitch_${Date.now()}.gif`);
+                    app.ffmpeg.FS('unlink', 'output.gif');
+                }
+
+                // Cleanup frames
+                for (let i = 0; i < totalFrames; i++) {
+                    try { app.ffmpeg.FS('unlink', `frame_${String(i).padStart(4, '0')}.png`); } catch (e) { }
+                }
 
             } catch (err) {
-                alert("Export Failed. System may have run out of memory for 4K.");
+                alert("Export Failed. See console.");
                 console.error(err);
                 dom.recStatus.textContent = "ERROR";
             } finally {
                 dom.selResolution.disabled = false;
+                dom.selFormat.disabled = false;
                 dom.recStatus.textContent = "DONE";
                 setTimeout(() => {
                     dom.recStatus.textContent = "";
@@ -1711,9 +1714,6 @@
 
         function render() {
             const ctx = dom.ctx; const w = app.width; const h = app.height;
-            if (app.isRecording && app.exportFormat === 'svg') {
-                app.currentFrameData = [];
-            }
 
             // IMPORTANT: Clear rect is needed for ALPHA
             // Always clear the canvas first.
@@ -1771,21 +1771,6 @@
                     node.hitH = app.fontSize * 1.2;
 
                     ctx.fillText(char, slotCenter, cursorY);
-
-                    if (app.isRecording && app.exportFormat === 'svg') {
-                        // Capture state for SVG export
-                        // We use the node index to track identity across frames
-                        const nodeIndex = app.nodes.indexOf(node);
-                        app.currentFrameData.push({
-                            index: nodeIndex,
-                            char: char,
-                            x: slotCenter,
-                            y: cursorY,
-                            tags: tags,
-                            font: `${app.fontSize}px ${FONT_NAME}`,
-                            color: app.textColor
-                        });
-                    }
                     if (app.selectionIndex === app.nodes.indexOf(node)) {
                         ctx.strokeStyle = getComputedStyle(document.body).getPropertyValue('--selection');
                         ctx.lineWidth = 3; ctx.setLineDash([6, 4]);
@@ -1808,20 +1793,12 @@
                 if (app.isPlaying) step();
                 render();
                 if (app.isRecording) {
-                    if (app.exportFormat === 'svg') {
-                        // Capture SVG Data
-                        app.recordedSVGData.push([...app.currentFrameData]);
-                        dom.recStatus.textContent = `FRAMES: ${app.recordedSVGData.length}`;
-                        if (app.recordedSVGData.length >= app.sequenceLimit) { stopRecording(); alert(`Limit reached (${app.sequenceLimit}). Saving...`); }
-                    } else {
-                        // Regular Video Recording (PNG Sequence)
-                        dom.canvas.toBlob(b => {
-                            if (!app.isRecording) return;
-                            app.sequenceFrames.push(b);
-                            dom.recStatus.textContent = `FRAMES: ${app.sequenceFrames.length}`;
-                            if (app.sequenceFrames.length >= app.sequenceLimit) { stopRecording(); alert(`Limit reached (${app.sequenceLimit}). Saving...`); }
-                        }, 'image/png');
-                    }
+                    dom.canvas.toBlob(b => {
+                        if (!app.isRecording) return;
+                        app.sequenceFrames.push(b);
+                        dom.recStatus.textContent = `FRAMES: ${app.sequenceFrames.length}`;
+                        if (app.sequenceFrames.length >= app.sequenceLimit) { stopRecording(); alert(`Limit reached (${app.sequenceLimit}). Saving...`); }
+                    }, 'image/png');
                 }
             }
         }
@@ -1945,11 +1922,7 @@
         function updateRecordButton() {
             const btn = dom.btnRecord;
             if (!app.isRecording) {
-                if (app.exportFormat === 'svg') {
-                    btn.innerHTML = `<i data-lucide="download" class="icon-sm"></i> REC SVG`;
-                } else {
-                    btn.innerHTML = `<i data-lucide="video" class="icon-sm"></i> REC VIDEO`;
-                }
+                btn.innerHTML = `<i data-lucide="video" class="icon-sm"></i> REC VIDEO`;
                 btn.classList.remove('recording'); dom.recStatus.textContent = "";
             } else {
                 btn.innerHTML = `<i data-lucide="square" class="icon-sm"></i> STOP RECORDING`;
@@ -1962,9 +1935,9 @@
             if (app.isRecording) {
                 stopRecording();
             } else {
-                if (app.exportFormat === 'mov' && !app.ffmpegLoaded) { alert("Please wait for engine to load."); return; }
+                if (!app.ffmpegLoaded) { alert("Please wait for engine to load."); return; }
                 // Safety check for COI
-                if (app.exportFormat === 'mov' && !crossOriginIsolated) {
+                if (!crossOriginIsolated) {
                     alert("Security Warning: 'SharedArrayBuffer' is not available. This prevents video encoding.\n\nEnsure 'coi-serviceworker.min.js' is loaded and the server is sending correct headers.");
                     return;
                 }
@@ -1974,158 +1947,15 @@
 
         function startRecording() {
             dom.selResolution.disabled = true;
+            dom.selFormat.disabled = true;
             app.isRecording = true; updateRecordButton();
             // Reset buffers
             app.sequenceFrames = [];
-            app.recordedSVGData = [];
             dom.recStatus.textContent = "CAPTURING...";
         }
         function stopRecording() {
             app.isRecording = false; updateRecordButton();
-            if (app.exportFormat === 'svg') {
-                renderSVGAnimation();
-            } else {
-                renderAlphaVideo();
-            }
-        }
-
-        async function renderSVGAnimation() {
-            if (app.recordedSVGData.length === 0) {
-                alert("No frame data recorded! Please try recording again.");
-                return;
-            }
-
-            dom.recStatus.textContent = "PROCESSING SVG...";
-
-            try {
-                // 1. Fetch Font
-                const response = await fetch(FONT_URL);
-                if (!response.ok) throw new Error("Font fetch failed");
-                const fontBlob = await response.blob();
-
-                const reader = new FileReader();
-                reader.readAsDataURL(fontBlob);
-
-                reader.onloadend = () => {
-                    const b64Font = reader.result;
-                    generateSVGContent(b64Font);
-                };
-            } catch (e) {
-                console.warn("Font embed failed, falling back to linked font.", e);
-                // Fallback: Generate SVG without embedded font (or with failing link)
-                generateSVGContent('');
-            }
-        }
-
-        function escapeXML(str) {
-            return str.replace(/[<>&'"]/g, function (c) {
-                switch (c) {
-                    case '<': return '&lt;';
-                    case '>': return '&gt;';
-                    case '&': return '&amp;';
-                    case '\'': return '&apos;';
-                    case '"': return '&quot;';
-                }
-            });
-        }
-
-        function generateSVGContent(fontData) {
-            const w = app.width;
-            const h = app.height;
-            const duration = app.recordedSVGData.length / app.fps;
-            const totalFrames = app.recordedSVGData.length;
-
-            const nodeAnimations = {};
-            const nodeInitialState = {};
-
-            const presentNodeIndices = new Set();
-            app.recordedSVGData.forEach(frame => {
-                frame.forEach(item => presentNodeIndices.add(item.index));
-            });
-
-            presentNodeIndices.forEach(index => {
-                let keyframes = `@keyframes anim-${index} {`;
-
-                // Track last state to optimize keyframes
-                let lastState = null;
-
-                app.recordedSVGData.forEach((frame, fIndex) => {
-                    const item = frame.find(i => i.index === index);
-                    // Use initial state from frame 0
-                    if (fIndex === 0 && item) nodeInitialState[index] = item;
-
-                    // If item is missing in this frame (rare), we skip it,
-                    // effectively holding the last state or transparent.
-                    if (!item) return;
-
-                    const tags = item.tags.length ? item.tags.map(t => `"${t}" 1`).join(', ') : 'normal';
-
-                    // State signature for comparison
-                    const stateSig = `${item.x.toFixed(2)}_${item.y.toFixed(2)}_${tags}_${item.color}`;
-
-                    // ALWAYS write the first frame (0%) and any frame where state changes
-                    if (fIndex === 0 || stateSig !== lastState) {
-                        const pct = ((fIndex / (totalFrames)) * 100).toFixed(3);
-                        // Note: We use step-end. The value at 0% holds until the next keyframe.
-
-                        keyframes += `${pct}% { 
-                            font-feature-settings: ${tags}; 
-                            transform: translate(${item.x}px, ${item.y}px);
-                            fill: ${item.color};
-                        } `;
-                        lastState = stateSig;
-                    }
-                });
-
-                keyframes += `}`;
-                nodeAnimations[index] = keyframes;
-            });
-
-            let svg = `<?xml version="1.0" encoding="UTF-8" standalone="no"?>
-<svg width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" xmlns="http://www.w3.org/2000/svg">
-    <defs>
-        <style>
-            @font-face {
-                font-family: '${FONT_NAME}';
-                src: url('${fontData}');
-            }
-            text {
-                font-family: '${FONT_NAME}';
-                font-size: ${app.fontSize}px;
-                text-anchor: middle;
-                /* Use step-end to prevent interpolation between glitches */
-                animation-timing-function: step-end;
-            }
-            /* Animations */
-            ${Object.values(nodeAnimations).join('\\n')}
-        </style>
-    </defs>
-    <rect width="100%" height="100%" fill="${app.bgMode === 'color' ? app.bgColor : 'none'}" />
-`;
-
-            presentNodeIndices.forEach(index => {
-                const init = nodeInitialState[index];
-                if (!init) return;
-                // Init fill color from first frame, though animation overrides it
-                const animStyle = `animation: anim-${index} ${duration}s infinite; fill: ${init.color};`;
-
-                // We default to (0,0) and let transform move it. 
-                // Note: The first keyframe (0%) sets the transform. 
-                // step-end ensures it jumps immediately to 0% state? 
-                // Actually standard CSS animation applies 0% immediately.
-
-                // Escape char for XML validity (e.g. & -> &amp;)
-                svg += `<text x="0" y="0" style="${animStyle}">${escapeXML(init.char)}</text>`;
-            });
-
-            svg += `</svg>`;
-
-            const blob = new Blob([svg], { type: 'image/svg+xml;charset=utf-8' });
-            saveAs(blob, `Firma_Glitch_${Date.now()}.svg`);
-
-            dom.recStatus.textContent = "DONE";
-            setTimeout(() => { dom.recStatus.textContent = ""; }, 3000);
-            dom.selResolution.disabled = false;
+            renderExport();
         }
 
         function buildGlyphGrid(node) {
@@ -2196,17 +2026,6 @@
             dom.selResolution.onchange = e => {
                 const p = e.target.value.split(','); app.width = parseInt(p[0]); app.height = parseInt(p[1]);
                 dom.canvas.width = app.width; dom.canvas.height = app.height; app.widthCache = {}; handleResize(); render();
-            };
-            dom.selFormat.onchange = (e) => {
-                app.exportFormat = e.target.value;
-                if (app.exportFormat === 'svg') {
-                    // Update UI if needed
-                    dom.btnRecord.innerHTML = `<i data-lucide="download" class="icon-sm"></i> REC SVG`;
-                    dom.btnRecord.classList.remove('disabled');
-                } else {
-                    updateEngineStatus(app.ffmpegLoaded ? 'ready' : 'loading');
-                }
-                lucide.createIcons();
             };
             dom.btnRecord.onclick = toggleRecording;
             dom.btnLock.onclick = () => { if (app.selectionIndex > -1) { const n = app.nodes[app.selectionIndex]; n.locked = !n.locked; updateLockBtn(n.locked); } };
