@@ -1612,6 +1612,7 @@
                     '-i', 'frame_%04d.png',
                     '-c:v', 'prores_ks',
                     '-profile:v', '4444',
+<<<<<<< HEAD
                     // Standard bicubic scaling is safer for alpha in WASM
                     '-vf', `scale=${tW}:${tH},format=yuva444p10le`,
                     '-pix_fmt', 'yuva444p10le',
@@ -1619,6 +1620,9 @@
                     '-vendor', 'apl0',
                     '-bits_per_mb', '8000',
                     '-pix_fmt', 'yuva444p10le',
+=======
+                    '-vf', 'format=yuva444p10le,setsar=1',
+>>>>>>> parent of 8532302 (Update index.html)
                     '-y',
                     'output.mov'
                 );
