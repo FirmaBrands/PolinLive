@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Firma Font | Polin Li123ve</title>
+    <title>Firma Font | Polin Live</title>
 
     <script src="coi-serviceworker.min.js"></script>
 
@@ -2017,58 +2017,70 @@
             }
         }
 
+        function escapeXML(str) {
+            return str.replace(/[<>&'"]/g, function (c) {
+                switch (c) {
+                    case '<': return '&lt;';
+                    case '>': return '&gt;';
+                    case '&': return '&amp;';
+                    case '\'': return '&apos;';
+                    case '"': return '&quot;';
+                }
+            });
+        }
+
         function generateSVGContent(fontData) {
             const w = app.width;
             const h = app.height;
             const duration = app.recordedSVGData.length / app.fps;
             const totalFrames = app.recordedSVGData.length;
 
-            // Build Keyframes
-            // We need a map of NodeIndex -> KeyframeString
             const nodeAnimations = {};
             const nodeInitialState = {};
 
-            // Identify all unique nodes that appeared
             const presentNodeIndices = new Set();
             app.recordedSVGData.forEach(frame => {
                 frame.forEach(item => presentNodeIndices.add(item.index));
             });
 
-            // Iterate through every frame to build CSS
             presentNodeIndices.forEach(index => {
-                // Find initial state (first frame where it appears, usually frame 0)
-                // Actually, we use Frame 0 as base.
-                // If a node is missing in a frame (e.g. glitching out?), handle it.
-                // Based on logic, nodes don't disappear, just change glyphs.
-
                 let keyframes = `@keyframes anim-${index} {`;
-                let hasChange = false;
+
+                // Track last state to optimize keyframes
+                let lastState = null;
 
                 app.recordedSVGData.forEach((frame, fIndex) => {
                     const item = frame.find(i => i.index === index);
-                    if (!item) return; // Should not happen in this logic
+                    // Use initial state from frame 0
+                    if (fIndex === 0 && item) nodeInitialState[index] = item;
 
-                    if (fIndex === 0) nodeInitialState[index] = item;
+                    // If item is missing in this frame (rare), we skip it,
+                    // effectively holding the last state or transparent.
+                    if (!item) return;
 
-                    const pct = ((fIndex / (totalFrames - 1)) * 100).toFixed(2);
                     const tags = item.tags.length ? item.tags.map(t => `"${t}" 1`).join(', ') : 'normal';
 
-                    // Optimization: Only write keyframe if changed? 
-                    // No, for 'step' animation we might need hold. 
-                    // Simplest is keyframe every frame or just simple percentage.
-                    // To avoid huge file, we could optimize, but let's be safe first.
+                    // State signature for comparison
+                    const stateSig = `${item.x.toFixed(2)}_${item.y.toFixed(2)}_${tags}_${item.color}`;
 
-                    keyframes += `${pct}% { 
-                        font-feature-settings: ${tags}; 
-                        transform: translate(${item.x}px, ${item.y}px);
-                    } `;
+                    // ALWAYS write the first frame (0%) and any frame where state changes
+                    if (fIndex === 0 || stateSig !== lastState) {
+                        const pct = ((fIndex / (totalFrames)) * 100).toFixed(3);
+                        // Note: We use step-end. The value at 0% holds until the next keyframe.
+
+                        keyframes += `${pct}% { 
+                            font-feature-settings: ${tags}; 
+                            transform: translate(${item.x}px, ${item.y}px);
+                            fill: ${item.color};
+                        } `;
+                        lastState = stateSig;
+                    }
                 });
 
                 keyframes += `}`;
                 nodeAnimations[index] = keyframes;
             });
 
-            // Build SVG
             let svg = `<?xml version="1.0" encoding="UTF-8" standalone="no"?>
 <svg width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" xmlns="http://www.w3.org/2000/svg">
     <defs>
@@ -2080,8 +2092,9 @@
             text {
                 font-family: '${FONT_NAME}';
                 font-size: ${app.fontSize}px;
-                fill: ${app.textColor};
                 text-anchor: middle;
+                /* Use step-end to prevent interpolation between glitches */
+                animation-timing-function: step-end;
             }
             /* Animations */
             ${Object.values(nodeAnimations).join('\\n')}
@@ -2090,41 +2103,23 @@
     <rect width="100%" height="100%" fill="${app.bgMode === 'color' ? app.bgColor : 'none'}" />
 `;
 
-            // Add Text Elements
             presentNodeIndices.forEach(index => {
                 const init = nodeInitialState[index];
                 if (!init) return;
-                // Animation style
-                const animStyle = `animation: anim-${index} ${duration}s linear infinite;`; // linear or steps(1)?
-                // Since we output discrete keyframes matchting FPS, linear interpolation might blur changes 
-                // but transform x/y should be smooth? 
-                // Glitch is discrete. Text swap is discrete.
-                // Transform position (jitter) is discrete.
-                // So 'steps(1)' might be better to avoid floating between ss01 and ss02?
-                // font-feature-settings is discrete anyway.
-                // transform should ideally be discrete for "glitch" feel.
+                // Init fill color from first frame, though animation overrides it
+                const animStyle = `animation: anim-${index} ${duration}s infinite; fill: ${init.color};`;
 
-                // Let's use linear, but keyframes are dense. 
-                // Actually `font-feature-settings` doesn't interpolate, it flips.
-                // `transform` interpolates. If we want hard cuts, we need steps.
-                // Given the app is "Firma Glitcher", strict steps are probably better.
-                // But `duration` matches total time.
+                // We default to (0,0) and let transform move it. 
+                // Note: The first keyframe (0%) sets the transform. 
+                // step-end ensures it jumps immediately to 0% state? 
+                // Actually standard CSS animation applies 0% immediately.
 
-                // Note: CSS Keyframes with steps:
-                // If we have keyframes at 0% and 1.2%, and we use linear, it interpolates.
-                // If we use steps(totalFrames), it might misalign if keyframes aren't perfectly spaced.
-                // But we generated keyframes based on exact percentages.
-                // Let's try `linear` first, but keep `font-feature-settings` behavior in mind.
-
-                // Correction: `font-feature-settings` is not interpolatable, so it flips at 50% between keyframes usually.
-                // But we define keyframes for EVERY frame. So it changes at the keyframe.
-
-                svg += `<text x="0" y="0" style="${animStyle}">${init.char}</text>`;
+                // Escape char for XML validity (e.g. & -> &amp;)
+                svg += `<text x="0" y="0" style="${animStyle}">${escapeXML(init.char)}</text>`;
             });
 
             svg += `</svg>`;
 
-            // Download
             const blob = new Blob([svg], { type: 'image/svg+xml;charset=utf-8' });
             saveAs(blob, `Firma_Glitch_${Date.now()}.svg`);
 
