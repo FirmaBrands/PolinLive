@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Firma Font 12| Polin Live</title>
+    <title>Firma Font | Polin Live</title>
 
     <script src="coi-serviceworker.min.js"></script>
 
@@ -1611,21 +1611,24 @@
                 await app.ffmpeg.run(
                     '-framerate', String(fps),
                     '-i', 'frame_%04d.png',
-                    '-c:v', 'qtrle',
-                    '-pix_fmt', 'argb',
+                    '-c:v', 'libvpx-vp9',
+                    '-pix_fmt', 'yuva420p',
+                    '-vf', 'setsar=1',
+                    '-b:v', '0',
+                    '-crf', '20',
                     '-y',
-                    'output.mov'
+                    'output.webm'
                 );
 
                 dom.zipBar.style.width = "90%";
 
-                const data = app.ffmpeg.FS('readFile', 'output.mov');
-                const videoBlob = new Blob([data.buffer], { type: 'video/quicktime' });
-                saveAs(videoBlob, `Firma_Alpha_Mov_${Date.now()}.mov`);
+                const data = app.ffmpeg.FS('readFile', 'output.webm');
+                const videoBlob = new Blob([data.buffer], { type: 'video/webm' });
+                saveAs(videoBlob, `Firma_Alpha_WebM_${Date.now()}.webm`);
 
                 // Cleanup
                 try {
-                    app.ffmpeg.FS('unlink', 'output.mov');
+                    app.ffmpeg.FS('unlink', 'output.webm');
                     for (let i = 0; i < totalFrames; i++) {
                         try { app.ffmpeg.FS('unlink', `frame_${String(i).padStart(4, '0')}.png`); } catch (e) { }
                     }
