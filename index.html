@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Firma Font | Polin Live</title>
+    <title>Firma Font - Polin Live</title>
 
     <script src="coi-serviceworker.min.js"></script>
 
@@ -1193,32 +1193,45 @@
 
                     <!-- START BUTTONS -->
                     <div id="grpStart" style="display:none; flex-direction:column; gap:8px; margin-top:12px;">
-                        <button id="btnReqMov" class="btn" style="height:36px; justify-content:flex-start;">
-                            <i data-lucide="video" class="icon-sm"></i> MOV
-                            <span style="opacity:0.5; font-weight:400; font-size:9px; margin-left:auto;">AE,
-                                PREMIERE</span>
+                        <button id="btnReqMov" class="btn"
+                            style="height:auto; min-height:42px; padding:8px 12px; justify-content:space-between;">
+                            <div style="display:flex; align-items:center; gap:8px;">
+                                <i data-lucide="clapperboard" class="icon-sm"></i>
+                                <span style="font-size:12px;">MOV</span>
+                            </div>
+                            <div
+                                style="text-align:right; font-size:9px; opacity:0.6; font-weight:400; line-height:1.2;">
+                                After Effects<br>Premiere Pro
+                            </div>
                         </button>
-                        <button id="btnReqGif" class="btn" style="height:36px; justify-content:flex-start;">
-                            <i data-lucide="image" class="icon-sm"></i> GIF
-                            <span style="opacity:0.5; font-weight:400; font-size:9px; margin-left:auto;">KEYNOTE,
-                                FIGMA</span>
+                        <button id="btnReqGif" class="btn"
+                            style="height:auto; min-height:42px; padding:8px 12px; justify-content:space-between;">
+                            <div style="display:flex; align-items:center; gap:8px;">
+                                <i data-lucide="image" class="icon-sm"></i>
+                                <span style="font-size:12px;">GIF</span>
+                            </div>
+                            <div
+                                style="text-align:right; font-size:9px; opacity:0.6; font-weight:400; line-height:1.2;">
+                                Keynote<br>Figma / Web
+                            </div>
                         </button>
-                    </div>
-
-                    <!-- STOP BUTTON -->
-                    <button id="btnStop" class="btn btn-rec disabled"
-                        style="height: 40px; justify-content:center; margin-top:12px; display:none;">
-                        <i data-lucide="square" class="icon-sm"></i> STOP RECORDING
-                    </button>
-
-                    <div id="recStatus"
-                        style="font-size:10px; color:var(--text-muted); text-align:center; margin-top:16px; font-family:var(--font-mono); min-height:14px; white-space: pre-wrap;">
-                    </div>
-                    <div id="zipProgressWrapper">
-                        <div id="zipBar"></div>
                     </div>
                 </div>
+
+                <!-- STOP BUTTON -->
+                <button id="btnStop" class="btn btn-rec disabled"
+                    style="height: 40px; justify-content:center; margin-top:12px; display:none;">
+                    <i data-lucide="square" class="icon-sm"></i> STOP RECORDING
+                </button>
+
+                <div id="recStatus"
+                    style="font-size:10px; color:var(--text-muted); text-align:center; margin-top:16px; font-family:var(--font-mono); min-height:14px; white-space: pre-wrap;">
+                </div>
+                <div id="zipProgressWrapper">
+                    <div id="zipBar"></div>
+                </div>
             </div>
+        </div>
         </div>
 
         <div id="panel-letter">
@@ -1384,7 +1397,7 @@
                 {
                     target: '#t-step-export',
                     title: '7. Export Video',
-                    body: 'Exports a high-quality QuickTime MOV file (Lossless) with Alpha Transparency, ready for After Effects.',
+                    body: 'Choose <b>MOV</b> for professional editing (After Effects, Premiere).<br>Choose <b>GIF</b> for presentations (Keynote, Figma) and web use.',
                     onEnter: () => { deselect(); }
                 },
                 {
