@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Firma Font | Polin 2Live</title>
+    <title>Firma Font | Polin Live</title>
 
     <script src="coi-serviceworker.min.js"></script>
 
@@ -1597,9 +1597,10 @@
 
                 /* FIX APPLIED (Attempt 3):
                    1. Reverted to ProRes 4444 (prores_ks). 'qtrle' is deprecated on modern macOS.
-                   2. Fixed "Jagged Lines": Set -q:v 4 to force high quality encoding (less compression artifacts).
-                   3. Fixed "Alpha Disappeared": Added -tag:v ap4h to strictly identify alpha channel to QuickTime.
+                   2. Fixed "Jagged Lines": Set -q:v 0 to force LOSSLESS encoding (Fixes aliasing artifacts).
+                   3. Fixed "Alpha Disappeared": Added -bits_per_mb 8000. Without high bitrate, alpha is compressed to black.
                    4. Fixed "Squished": Kept setsar=1.
+                   5. Colorspace: Added bt709 to ensure correct color rendering.
                 */
 
                 await app.ffmpeg.run(
@@ -1608,10 +1609,10 @@
                     '-c:v', 'prores_ks',
                     '-profile:v', '4444',
                     '-pix_fmt', 'yuva444p10le',
-                    '-q:v', '4',           // Force High Quality (0-32, lower is better) to fix jagged edges
-                    '-vendor', 'apl0',     // Claim Apple Vendor to ensure compatibility
-                    '-tag:v', 'ap4h',      // Explicitly tag as Apple ProRes 4444 High (Fixes missing alpha)
-                    '-vf', 'setsar=1',     // Fix Aspect Ratio
+                    '-q:v', '0',           // Force Lossless Quality (Fixes jagged edges)
+                    '-bits_per_mb', '8000', // Force High Bitrate (Fixes missing alpha)
+                    '-vendor', 'apl0',     // Claim Apple Vendor (Fixes Keynote compatibility)
+                    '-vf', 'colorspace=all=bt709:iall=bt709:fast=1,setsar=1', // Fix Colors & Aspect Ratio
                     '-y',
                     'output.mov'
                 );
