@@ -1190,6 +1190,11 @@
                         <i data-lucide="loader" class="icon-sm"></i> LOADING ENGINE...
                     </button>
 
+                    <button id="btnExportSVG" class="btn"
+                        style="height: 32px; justify-content:center; margin-top:8px; opacity:0.9;">
+                        <i data-lucide="image" class="icon-sm"></i> EXPORT SVG FRAME
+                    </button>
+
                     <div id="recStatus"
                         style="font-size:10px; color:var(--text-muted); text-align:center; margin-top:16px; font-family:var(--font-mono); min-height:14px; white-space: pre-wrap;">
                     </div>
@@ -1637,6 +1642,92 @@
             }
         }
 
+
+
+        function saveSVG() {
+            const w = app.width;
+            const h = app.height;
+            let svgContent = `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}">`;
+
+            // Background
+            if (app.bgMode === 'color') {
+                svgContent += `<rect width="100%" height="100%" fill="${app.bgColor}" />`;
+            }
+
+            // Re-calculate layout (reusing logic from render)
+            const lines = [];
+            let currentLine = [];
+            app.nodes.forEach(node => {
+                if (node.originalChar === '\n') {
+                    lines.push(currentLine);
+                    currentLine = [];
+                } else {
+                    currentLine.push(node);
+                }
+            });
+            lines.push(currentLine);
+
+            const lhPx = app.fontSize * app.lineHeight;
+            const totalH = lines.length * lhPx;
+            let cursorY = (h / 2) - (totalH / 2) + (app.fontSize * 0.75);
+
+            lines.forEach(line => {
+                if (line.length === 0) {
+                    cursorY += lhPx;
+                    return;
+                }
+
+                // Bidi logic
+                const textContent = line.map(n => n.originalChar).join('');
+                let isRtlBase = false;
+                for (const char of textContent) {
+                    if (/[\u0590-\u08FF\uFB1D-\uFDFD\uFE70-\uFEFC]/.test(char)) {
+                        isRtlBase = true;
+                        break;
+                    }
+                    if (/[A-Za-z]/.test(char)) {
+                        isRtlBase = false;
+                        break;
+                    }
+                }
+                const visualLine = resolveBiDiOrder(line, isRtlBase);
+
+                // Calculate Totals
+                let totalW = 0;
+                visualLine.forEach(node => {
+                    totalW += node.width + (app.fontSize * app.tracking) + (node.marginLeft + node.marginRight) * app.fontSize;
+                });
+                if (visualLine.length) totalW -= (app.fontSize * app.tracking);
+
+                let cursorX = (w / 2) - (totalW / 2);
+
+                visualLine.forEach(node => {
+                    const char = node.originalChar;
+                    // For SVG, we need to escape special characters if necessary, mainly <, >, &
+                    const safeChar = char.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+                    const tags = node.activeTag ? [node.activeTag] : [];
+                    const featureSettings = tags.length > 0 ? tags.map(t => `'${t}' 1`).join(', ') : "normal";
+
+                    let slotCenter = cursorX + (node.marginLeft * app.fontSize) + (node.width / 2);
+
+                    // Build Text Element
+                    // We use text-anchor middle at the slot center
+                    svgContent += `<text x="${slotCenter}" y="${cursorY}" fill="${app.textColor}" font-family="${FONT_NAME}" font-size="${app.fontSize}px" text-anchor="middle" style="font-feature-settings: ${featureSettings};">${safeChar}</text>`;
+
+                    cursorX += (node.marginLeft * app.fontSize) + node.width + (app.fontSize * app.tracking) + (node.marginRight * app.fontSize);
+                });
+
+                cursorY += lhPx;
+            });
+
+            svgContent += `</svg>`;
+
+            const blob = new Blob([svgContent], {
+                type: "image/svg+xml;charset=utf-8"
+            });
+            saveAs(blob, `Firma_Frame_${Date.now()}.svg`);
+        }
+
         function syncText() {
             const chars = Array.from(app.rawText);
             app.nodes = chars.map((char, i) => {
@@ -2008,6 +2099,7 @@
                 dom.canvas.width = app.width; dom.canvas.height = app.height; app.widthCache = {}; handleResize(); render();
             };
             dom.btnRecord.onclick = toggleRecording;
+            document.getElementById('btnExportSVG').onclick = saveSVG;
             dom.btnLock.onclick = () => { if (app.selectionIndex > -1) { const n = app.nodes[app.selectionIndex]; n.locked = !n.locked; updateLockBtn(n.locked); } };
             document.getElementById('btnCloseInsp').onclick = deselect;
             dom.btnApplyAll.onclick = () => {
