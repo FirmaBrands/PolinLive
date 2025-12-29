@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Firma Font | Poli123n Live</title>
+    <title>Firma Font | Polin Live</title>
 
     <script src="coi-serviceworker.min.js"></script>
 
@@ -1595,22 +1595,12 @@
 
                 dom.recStatus.textContent = "ENCODING ALPHA VIDEO...";
 
-                /* FIX APPLIED:
-                   1. Codec: prores_ks (Apple ProRes) - industry standard for transparency.
-                   2. Profile: 4444 (4) - REQUIRED for alpha.
-                   3. Pix Fmt: yuva444p10le - REQUIRED for 10-bit color + alpha.
-                   4. Vendor: apl0 - Tags file as Apple-compatible to force QuickTime recognition.
-                   5. Alpha Bits: 16 - Force alpha channel depth to prevent drop-out.
-                   6. Premultiply Filter: 'premultiply=inplace=1' - This fixes the "Jagged Edges" / Halo effect
-                      by converting the Straight Alpha (Canvas) to Premultiplied Alpha (ProRes).
-                */
-
-// Run FFmpeg with Animation codec (qtrle) - lossless + alpha + universal QuickTime support
+                // Run FFmpeg
                 await app.ffmpeg.run(
                     '-framerate', String(fps),
                     '-i', 'frame_%04d.png',
-                    '-c:v', 'qtrle',
-                    '-pix_fmt', 'argb',
+                    '-c:v', 'png',
+                    '-vf', 'setsar=1',
                     '-y',
                     'output.mov'
                 );
