@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Firma Font - Polin Live</title>
+    <title>Firma Font | Polin Live</title>
 
     <script src="coi-serviceworker.min.js"></script>
 
@@ -1217,7 +1217,7 @@
                 </div>
 
                 <!-- STOP BUTTON -->
-                <button id="btnStop" class="btn btn-rec disabled"
+                <button id="btnStop" class="btn btn-rec"
                     style="height: 40px; justify-content:center; margin-top:12px; display:none;">
                     <i data-lucide="square" class="icon-sm"></i> STOP RECORDING
                 </button>
@@ -1691,10 +1691,12 @@
             if (app.isRecording) {
                 dom.grpStart.style.display = 'none';
                 dom.btnStop.style.display = 'flex';
+                dom.btnStop.classList.add('recording');
                 dom.recStatus.textContent = "CAPTURING...";
             } else {
                 dom.grpStart.style.display = 'flex';
                 dom.btnStop.style.display = 'none';
+                dom.btnStop.classList.remove('recording');
                 dom.recStatus.textContent = "";
             }
             lucide.createIcons();
