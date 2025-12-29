@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Firma Font | Polin Live</title>
+    <title>Firma Font - Polin Live</title>
 
     <script src="coi-serviceworker.min.js"></script>
 
@@ -1990,44 +1990,7 @@
             render();
         }
 
-        function updateRecordButton() {
-            const btn = dom.btnRecord;
-            if (!app.isRecording) {
-                btn.innerHTML = `<i data-lucide="video" class="icon-sm"></i> REC VIDEO`;
-                btn.classList.remove('recording'); dom.recStatus.textContent = "";
-            } else {
-                btn.innerHTML = `<i data-lucide="square" class="icon-sm"></i> STOP RECORDING`;
-                btn.classList.add('recording');
-            }
-            lucide.createIcons();
-        }
 
-        function toggleRecording() {
-            if (app.isRecording) {
-                stopRecording();
-            } else {
-                if (!app.ffmpegLoaded) { alert("Please wait for engine to load."); return; }
-                // Safety check for COI
-                if (!crossOriginIsolated) {
-                    alert("Security Warning: 'SharedArrayBuffer' is not available. This prevents video encoding.\n\nEnsure 'coi-serviceworker.min.js' is loaded and the server is sending correct headers.");
-                    return;
-                }
-                startRecording();
-            }
-        }
-
-        function startRecording() {
-            dom.selResolution.disabled = true;
-            dom.selFormat.disabled = true;
-            app.isRecording = true; updateRecordButton();
-            // Reset buffers
-            app.sequenceFrames = [];
-            dom.recStatus.textContent = "CAPTURING...";
-        }
-        function stopRecording() {
-            app.isRecording = false; updateRecordButton();
-            renderExport();
-        }
 
         function buildGlyphGrid(node) {
             dom.glyphGrid.innerHTML = ''; const char = node.override || node.originalChar;
