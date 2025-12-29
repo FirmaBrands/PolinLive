@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Firma Font | Polin Live</title>
+    <title>Firma Font | Polin Li123ve</title>
 
     <script src="coi-serviceworker.min.js"></script>
 
@@ -1808,17 +1808,20 @@
                 if (app.isPlaying) step();
                 render();
                 if (app.isRecording) {
-                    dom.canvas.toBlob(b => {
-                        if (!app.isRecording) return;
-                        app.sequenceFrames.push(b);
-                        dom.recStatus.textContent = `FRAMES: ${app.sequenceFrames.length}`;
-                        if (app.sequenceFrames.length >= app.sequenceLimit) { stopRecording(); alert(`Limit reached (${app.sequenceLimit}). Saving...`); }
-                    }, 'image/png');
-                } else if (app.isRecording && app.exportFormat === 'svg') {
-                    // Capture SVG Data
-                    app.recordedSVGData.push([...app.currentFrameData]);
-                    dom.recStatus.textContent = `FRAMES: ${app.recordedSVGData.length}`;
-                    if (app.recordedSVGData.length >= app.sequenceLimit) { stopRecording(); alert(`Limit reached (${app.sequenceLimit}). Saving...`); }
+                    if (app.exportFormat === 'svg') {
+                        // Capture SVG Data
+                        app.recordedSVGData.push([...app.currentFrameData]);
+                        dom.recStatus.textContent = `FRAMES: ${app.recordedSVGData.length}`;
+                        if (app.recordedSVGData.length >= app.sequenceLimit) { stopRecording(); alert(`Limit reached (${app.sequenceLimit}). Saving...`); }
+                    } else {
+                        // Regular Video Recording (PNG Sequence)
+                        dom.canvas.toBlob(b => {
+                            if (!app.isRecording) return;
+                            app.sequenceFrames.push(b);
+                            dom.recStatus.textContent = `FRAMES: ${app.sequenceFrames.length}`;
+                            if (app.sequenceFrames.length >= app.sequenceLimit) { stopRecording(); alert(`Limit reached (${app.sequenceLimit}). Saving...`); }
+                        }, 'image/png');
+                    }
                 }
             }
         }
@@ -1987,11 +1990,19 @@
         }
 
         async function renderSVGAnimation() {
+            if (app.recordedSVGData.length === 0) {
+                alert("No frame data recorded! Please try recording again.");
+                return;
+            }
+
             dom.recStatus.textContent = "PROCESSING SVG...";
 
             try {
                 // 1. Fetch Font
-                const fontBlob = await fetch(FONT_URL).then(res => res.blob());
+                const response = await fetch(FONT_URL);
+                if (!response.ok) throw new Error("Font fetch failed");
+                const fontBlob = await response.blob();
+
                 const reader = new FileReader();
                 reader.readAsDataURL(fontBlob);
 
@@ -2000,9 +2011,9 @@
                     generateSVGContent(b64Font);
                 };
             } catch (e) {
-                console.error(e);
-                alert("Failed to load font for SVG export.");
-                dom.recStatus.textContent = "ERROR";
+                console.warn("Font embed failed, falling back to linked font.", e);
+                // Fallback: Generate SVG without embedded font (or with failing link)
+                generateSVGContent('');
             }
         }
 
