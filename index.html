@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Firma Fo123nt | Polin Live</title>
+    <title>Firma Font | Polin Live</title>
 
     <script src="coi-serviceworker.min.js"></script>
 
@@ -1596,21 +1596,17 @@
                 dom.recStatus.textContent = "ENCODING ALPHA VIDEO...";
 
                 /* FIX APPLIED:
-                   1. Codec: prores_ks (Apple ProRes) - industry standard for transparency.
-                   2. Profile: 4444 (Supports alpha).
-                   3. Pix Fmt: yuva444p10le (10-bit YUV with Alpha) - crucial for QuickTime.
-                   4. Vendor: apl0 - Tags file as Apple-compatible to force QuickTime recognition.
-                   5. Filter: setsar=1 - Forces Square Pixel Aspect Ratio to prevent squishing on odd resolutions.
-                   6. No Scaling - Keeps exact canvas dimensions to prevent aliasing.
+                   1. Codec: qtrle (QuickTime Animation) - Ensures RGB color space. 
+                      This prevents the "jagged lines" caused by YUV color conversion on red text.
+                   2. Pix Fmt: argb - Ensures full 8-bit Alpha channel is preserved.
+                   3. Filter: setsar=1 - Forces Square Pixel Aspect Ratio to fix squishing on 1080x1350/1920.
                 */
 
                 await app.ffmpeg.run(
                     '-framerate', String(fps),
                     '-i', 'frame_%04d.png',
-                    '-c:v', 'prores_ks',
-                    '-profile:v', '4444',
-                    '-pix_fmt', 'yuva444p10le',
-                    '-vendor', 'apl0',
+                    '-c:v', 'qtrle',
+                    '-pix_fmt', 'argb',
                     '-vf', 'setsar=1',
                     '-y',
                     'output.mov'
