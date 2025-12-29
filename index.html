@@ -1296,8 +1296,7 @@
             canvas: document.getElementById('exportCanvas'),
             canvasWrapper: document.getElementById('canvas-wrapper'),
             viewport: document.getElementById('viewport'),
-            // desynchronized: false can helps with some rendering artifacts on export
-            ctx: document.getElementById('exportCanvas').getContext('2d', { alpha: true, desynchronized: false }),
+            ctx: document.getElementById('exportCanvas').getContext('2d', { alpha: true }),
             inpColor: document.getElementById('inpColor'),
             inpBgColor: document.getElementById('inpBgColor'),
             inspCharDisplay: document.getElementById('inspCharDisplay'),
@@ -1607,12 +1606,8 @@
                     '-i', 'frame_%04d.png',
                     '-c:v', 'prores_ks',
                     '-profile:v', '4444',
-                    // Ensure specific pixel format and alignment. 
-                    // Note: 'setsar=1' removed to avoid aspect ratio issues on non-standard res.
-                    // Added even-dimension constraint just in case.
-                    '-vf', 'scale=trunc(iw/2)*2:trunc(ih/2)*2,format=yuva444p10le',
+                    '-vf', 'format=rgba,format=yuva444p10le,setsar=1',
                     '-vtag', 'ap4h',
-                    '-vendor', 'apl0',
                     '-bits_per_mb', '8000',
                     '-y',
                     'output.mov'
@@ -1803,10 +1798,7 @@
                 dom.canvasWrapper.classList.add('transparent-bg');
             }
 
-            // High quality smoothing
-            ctx.imageSmoothingEnabled = true;
-            ctx.imageSmoothingQuality = 'high';
-
+            ctx.textRendering = "optimizeLegibility";
             ctx.textAlign = "left"; ctx.textBaseline = "alphabetic";
             const lines = []; let currentLine = [];
             app.nodes.forEach(node => {
