@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Firma Font | Polin Live</title>
+    <title>Fir1ma Font | Polin Live</title>
 
     <script src="coi-serviceworker.min.js"></script>
 
@@ -1602,19 +1602,15 @@
                 dom.recStatus.textContent = "ENCODING ALPHA VIDEO...";
 
                 // Run FFmpeg
-                // Downscale from 2x Supersampling
-                // Ensure even dimensions for ProRes 4444
-                const tW = app.width % 2 === 0 ? app.width : app.width - 1;
-                const tH = app.height % 2 === 0 ? app.height : app.height - 1;
-
                 await app.ffmpeg.run(
                     '-framerate', String(fps),
                     '-i', 'frame_%04d.png',
                     '-c:v', 'prores_ks',
                     '-profile:v', '4444',
-                    // lanczos for high quality downscaling, standard yuva444p10le
-                    // Removed setsar=1 as it broke alpha in previous attempt
-                    '-vf', `scale=${tW}:${tH}:flags=lanczos,format=yuva444p10le`,
+                    // Ensure specific pixel format and alignment. 
+                    // Note: 'setsar=1' removed to avoid aspect ratio issues on non-standard res.
+                    // Added even-dimension constraint just in case.
+                    '-vf', 'scale=trunc(iw/2)*2:trunc(ih/2)*2:flags=lanczos,setsar=1,format=yuva444p10le',
                     '-vtag', 'ap4h',
                     '-vendor', 'apl0',
                     '-bits_per_mb', '8000',
@@ -2032,22 +2028,12 @@
         function startRecording() {
             dom.selResolution.disabled = true;
             app.isRecording = true; updateRecordButton();
-            // Enable 2x Supersampling
-            dom.canvas.width = app.width * 2;
-            dom.canvas.height = app.height * 2;
-            dom.ctx.scale(2, 2);
-
             // Reset buffers
             app.sequenceFrames = [];
             dom.recStatus.textContent = "CAPTURING...";
         }
         function stopRecording() {
             app.isRecording = false; updateRecordButton();
-            // Reset to 1x
-            dom.canvas.width = app.width;
-            dom.canvas.height = app.height;
-            dom.ctx.scale(1, 1); // Not strictly needed as resize resets, but good for clarity
-            render(); // Redraw UI immediately
             renderAlphaVideo();
         }
 
