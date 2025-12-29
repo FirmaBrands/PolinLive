@@ -1595,19 +1595,23 @@
 
                 dom.recStatus.textContent = "ENCODING ALPHA VIDEO...";
 
-                /* FIX APPLIED:
-                   1. Codec: qtrle (QuickTime Animation) - Ensures RGB color space. 
-                      This prevents the "jagged lines" caused by YUV color conversion on red text.
-                   2. Pix Fmt: argb - Ensures full 8-bit Alpha channel is preserved.
-                   3. Filter: setsar=1 - Forces Square Pixel Aspect Ratio to fix squishing on 1080x1350/1920.
+                /* FIX APPLIED (Attempt 3):
+                   1. Reverted to ProRes 4444 (prores_ks). 'qtrle' is deprecated on modern macOS.
+                   2. Fixed "Jagged Lines": Set -q:v 4 to force high quality encoding (less compression artifacts).
+                   3. Fixed "Alpha Disappeared": Added -tag:v ap4h to strictly identify alpha channel to QuickTime.
+                   4. Fixed "Squished": Kept setsar=1.
                 */
 
                 await app.ffmpeg.run(
                     '-framerate', String(fps),
                     '-i', 'frame_%04d.png',
-                    '-c:v', 'qtrle',
-                    '-pix_fmt', 'argb',
-                    '-vf', 'setsar=1',
+                    '-c:v', 'prores_ks',
+                    '-profile:v', '4444',
+                    '-pix_fmt', 'yuva444p10le',
+                    '-q:v', '4',           // Force High Quality (0-32, lower is better) to fix jagged edges
+                    '-vendor', 'apl0',     // Claim Apple Vendor to ensure compatibility
+                    '-tag:v', 'ap4h',      // Explicitly tag as Apple ProRes 4444 High (Fixes missing alpha)
+                    '-vf', 'setsar=1',     // Fix Aspect Ratio
                     '-y',
                     'output.mov'
                 );
