@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Firma Font | Polin Live</title>
+    <title>Firma Font | Poli123n Live</title>
 
     <script src="coi-serviceworker.min.js"></script>
 
@@ -1605,16 +1605,12 @@
                       by converting the Straight Alpha (Canvas) to Premultiplied Alpha (ProRes).
                 */
 
+// Run FFmpeg with Animation codec (qtrle) - lossless + alpha + universal QuickTime support
                 await app.ffmpeg.run(
                     '-framerate', String(fps),
                     '-i', 'frame_%04d.png',
-                    '-c:v', 'prores_ks',
-                    '-profile:v', '4444',
-                    '-pix_fmt', 'yuva444p10le',
-                    '-vendor', 'apl0',
-                    '-bits_per_mb', '8000',
-                    '-alpha_bits', '16',
-                    '-vf', 'setsar=1,premultiply=inplace=1',
+                    '-c:v', 'qtrle',
+                    '-pix_fmt', 'argb',
                     '-y',
                     'output.mov'
                 );
