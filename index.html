@@ -1681,7 +1681,7 @@
                         '-framerate', String(fps),
                         '-i', 'frame_%04d.png',
                         '-i', 'palette.png',
-                        '-filter_complex', '[0:v][1:v]paletteuse=dither=bayer:bayer_scale=5:diff_mode=rectangle:alpha_threshold=128',
+                        '-filter_complex', '[0:v][1:v]paletteuse=dither=sierra2_4a:diff_mode=rectangle:alpha_threshold=128',
                         '-y',
                         'output.gif'
                     );
