@@ -1709,12 +1709,11 @@
                 dom.selResolution.disabled = false;
                 dom.grpStart.classList.remove('disabled');
                 dom.recStatus.textContent = "DONE";
-                setTimeout(() => {
-                    dom.recStatus.textContent = "";
-                    dom.zipProgressWrapper.style.display = "none";
-                    dom.zipBar.style.width = "0%";
-                    updateRecordButton(); // Ensure UI returns to ready state
-                }, 3000);
+
+                dom.recStatus.textContent = "";
+                dom.zipProgressWrapper.style.display = "none";
+                dom.zipBar.style.width = "0%";
+                updateRecordButton(); // Ensure UI returns to ready state
             }
         }
 
