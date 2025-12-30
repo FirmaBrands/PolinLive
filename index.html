@@ -1268,7 +1268,7 @@
                     </button>
                 </div>
 
-                <div class="section-group">
+                <div class="section-group" id="t-step-kerning">
                     <div class="section-title"><i data-lucide="move-horizontal" class="icon-sm"></i> Kerning</div>
                     <div class="control-row">
                         <span class="control-label">Left</span>
@@ -1390,13 +1390,13 @@
                 {
                     target: '#t-step-glitch',
                     title: '6. Glitch Engine',
-                    body: '<b>Count:</b> Strictly limits how many characters glitch at once. <br><b>Reset:</b> Restore all glitch parameters to default values.',
+                    body: '<ul><li><b>Speed:</b> Animation FPS.</li><li><b>Count:</b> Max simultaneous glitches.</li><li><b>Chance:</b> Probability of triggering.</li><li><b>Hold:</b> Glitch duration in frames.</li></ul>',
                     onEnter: () => { deselect(); }
                 },
                 {
                     target: '#t-step-export',
                     title: '7. Export Video',
-                    body: 'Choose <b>MOV</b> for professional editing (After Effects, Premiere).<br>Choose <b>GIF</b> for presentations (Keynote, Figma) and web use.',
+                    body: 'Select your target <b>Resolution</b>.<br>Choose <b>MOV</b> for professional editing (After Effects, Premiere).<br>Choose <b>GIF</b> for presentations (Keynote, Figma) and web use.',
                     onEnter: () => { deselect(); }
                 },
                 {
@@ -1414,9 +1414,20 @@
                     body: 'This is the heart of the glitch engine. You can select which glyphs are included in the random cycle for the current character.'
                 },
                 {
+                    target: '#t-step-kerning',
+                    title: '10. Kerning',
+                    body: 'Adjust the spacing around the selected character to fix any gaps or collisions.'
+                },
+                {
                     target: '#btnLock',
-                    title: '10. Locking',
+                    title: '11. Locking',
                     body: '<b>Lock:</b> Use this to exclude specific characters from the glitch cycle entirely.'
+                },
+                {
+                    target: 'body',
+                    title: "You're Ready!",
+                    body: "Good luck creating something amazing!<br><br>Click <b>Finish</b> to close this tutorial.",
+                    position: 'center'
                 }
             ],
 
