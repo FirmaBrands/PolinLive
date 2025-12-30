@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Firma F123ont | Polin Live</title>
+    <title>Firma Font | Polin Live</title>
 
     <script src="coi-serviceworker.min.js"></script>
 
@@ -1635,31 +1635,14 @@
 
                 if (format === 'mov') {
                     dom.recStatus.textContent = "ENCODING ALPHA VIDEO...";
-
-                    try {
-                        // Attempt ProRes 4444 for high quality + alpha
-                        await app.ffmpeg.run(
-                            '-framerate', String(fps),
-                            '-i', 'frame_%04d.png',
-                            '-c:v', 'prores_ks',
-                            '-profile:v', '4444',
-                            '-pix_fmt', 'yuva444p10le',
-                            '-vf', 'setsar=1',
-                            '-y',
-                            'output.mov'
-                        );
-                    } catch (err) {
-                        console.warn("ProRes encoding failed, falling back to QTRLE (Animation)", err);
-                        // Fallback to QuickTime Animation (RLE) - widely supported, supports alpha
-                        await app.ffmpeg.run(
-                            '-framerate', String(fps),
-                            '-i', 'frame_%04d.png',
-                            '-c:v', 'qtrle',
-                            '-y',
-                            'output.mov'
-                        );
-                    }
-
+                    await app.ffmpeg.run(
+                        '-framerate', String(fps),
+                        '-i', 'frame_%04d.png',
+                        '-c:v', 'qtrle',
+                        '-vf', 'setsar=1',
+                        '-y',
+                        'output.mov'
+                    );
                     dom.zipBar.style.width = "90%";
                     const data = app.ffmpeg.FS('readFile', 'output.mov');
                     const videoBlob = new Blob([data.buffer], { type: 'video/quicktime' });
@@ -1668,14 +1651,12 @@
 
                 } else if (format === 'gif') {
                     dom.recStatus.textContent = "GENERATING GIF...";
-                    // Use palettegen/paletteuse with explicit transparency handling
-                    // 'reserve_transparent=1' ensures there's a color for transparency
-                    // 'alpha_threshold=128' avoids semi-transparent pixels becoming opaque 
-
+                    // Use palettegen/paletteuse for high quality transparent GIF
                     await app.ffmpeg.run(
                         '-framerate', String(fps),
                         '-i', 'frame_%04d.png',
-                        '-filter_complex', '[0:v] split [a][b];[a] palettegen=reserve_transparent=1 [p];[b][p] paletteuse=alpha_threshold=128',
+                        '-filter_complex', '[0:v] split [a][b];[a] palettegen [p];[b][p] paletteuse',
+                        '-dispose', 'background',
                         '-y',
                         'output.gif'
                     );
